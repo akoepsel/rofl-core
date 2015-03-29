@@ -22,6 +22,7 @@
 #include "rofl/common/caddress.h"
 #include "rofl/common/openflow/openflow_rofl_exceptions.h"
 #include "rofl/common/openflow/cofportstats.h"
+#include "rofl/common/openflow/cofportdescprops.h"
 
 
 
@@ -53,8 +54,9 @@ class cofport : public cmemory
 {
 private: // data structures
 
-	uint8_t								 ofp_version;	// OpenFlow version of port stored (openflow10::OFP_VERSION, openflow12::OFP_VERSION, ...)
-	rofl::openflow::cofport_stats_reply	 port_stats;
+	uint8_t				 ofp_version;	// OpenFlow version of port stored (openflow10::OFP_VERSION, openflow12::OFP_VERSION, ...)
+	cofportdesc_props	 properties;
+	cofport_stats_reply	 port_stats;
 
 public: // data structures
 
@@ -63,12 +65,15 @@ public: // data structures
 		struct openflow10::ofp_port		*ofpu10_port;
 		struct openflow12::ofp_port		*ofpu12_port;
 		struct openflow13::ofp_port		*ofpu13_port;
+		struct openflow14::ofp_port		*ofpu14_port;
+
 	} ofp_ofpu;
 
 #define ofh_port   ofp_ofpu.ofpu_port
 #define ofh10_port ofp_ofpu.ofpu10_port
 #define ofh12_port ofp_ofpu.ofpu12_port
 #define ofh13_port ofp_ofpu.ofpu13_port
+#define ofh14_port ofp_ofpu.ofpu14_port
 
 
 /*
@@ -136,35 +141,51 @@ public:
 	size_t
 	length() const;
 
-
-	/**
-	 *
-	 */
-	rofl::openflow::cofport_stats_reply&
-	get_port_stats();
-
-
 	/**
 	 *
 	 */
 	uint8_t
 	get_version() const;
 
-
 public:
 
+	/**
+	 *
+	 */
+	const rofl::openflow::cofport_stats_reply&
+	get_port_stats() const
+	{ return port_stats; };
+
+	/**
+	 *
+	 */
+	rofl::openflow::cofport_stats_reply&
+	set_port_stats()
+	{ return port_stats; };
+
+	/**
+	 *
+	 */
+	const rofl::openflow::cofportdesc_props&
+	get_properties() const
+	{ return properties; };
+
+	/**
+	 *
+	 */
+	rofl::openflow::cofportdesc_props&
+	set_properties()
+	{ return properties; };
 
 	/**
 	 */
 	uint32_t
 	get_port_no() const;
 
-
 	/**
 	 */
 	void
 	set_port_no(uint32_t port_no);
-
 
 	/**
 	 */
@@ -408,16 +429,6 @@ private:
 	 */
 	virtual void
 	recv_port_mod_of12(
-			uint32_t config,
-			uint32_t mask,
-			uint32_t advertise);
-
-
-	/**
-	 *
-	 */
-	virtual void
-	recv_port_mod_of13(
 			uint32_t config,
 			uint32_t mask,
 			uint32_t advertise);

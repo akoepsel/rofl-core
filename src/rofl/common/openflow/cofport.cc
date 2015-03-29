@@ -9,20 +9,24 @@ using namespace rofl::openflow;
 cofport::cofport(
 		uint8_t ofp_version) :
 				ofp_version(ofp_version),
+				properties(ofp_version),
 				port_stats(ofp_version)
 {
 	switch (ofp_version) {
-	case openflow::OFP_VERSION_UNKNOWN: {
+	case rofl::openflow::OFP_VERSION_UNKNOWN: {
 		ofh_port = 0;
 	} break;
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		resize(sizeof(struct rofl::openflow10::ofp_port));
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		resize(sizeof(struct rofl::openflow12::ofp_port));
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		resize(sizeof(struct rofl::openflow13::ofp_port));
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		resize(sizeof(struct rofl::openflow14::ofp_port));
 	} break;
 	default:
 		throw eBadVersion();
@@ -36,17 +40,21 @@ cofport::cofport(
 		uint8_t *buf,
 		size_t buflen) :
 				ofp_version(ofp_version),
+				properties(ofp_version),
 				port_stats(ofp_version)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		resize(sizeof(struct rofl::openflow10::ofp_port));
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		resize(sizeof(struct rofl::openflow12::ofp_port));
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		resize(sizeof(struct rofl::openflow13::ofp_port));
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		resize(sizeof(struct rofl::openflow14::ofp_port));
 	} break;
 	default:
 		throw eBadVersion();
@@ -73,6 +81,7 @@ cofport::operator= (cofport const& port)
 
 	ofp_version	= port.ofp_version;
 	port_stats 	= port.port_stats;
+	properties  = port.properties;
 
 	cmemory::operator= (port);
 
@@ -139,26 +148,21 @@ cofport::unpack(
 
 
 
-rofl::openflow::cofport_stats_reply&
-cofport::get_port_stats()
-{
-	return port_stats;
-}
-
-
-
 uint32_t
 cofport::get_port_no() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		return (uint32_t)be16toh((ofh10_port)->port_no);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->port_no);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->port_no);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return be32toh(ofh14_port->port_no);
 	} break;
 	default:
 		throw eBadVersion();
@@ -172,14 +176,17 @@ void
 cofport::set_port_no(uint32_t port_no)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		ofh10_port->port_no = htobe16((uint16_t)(port_no & 0x0000ffff));
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->port_no = htobe32(port_no);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->port_no = htobe32(port_no);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		ofh14_port->port_no = htobe32(port_no);
 	} break;
 	default:
 		throw eBadVersion();
@@ -192,14 +199,17 @@ rofl::cmacaddr
 cofport::get_hwaddr() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		return cmacaddr(ofh10_port->hw_addr, OFP_ETH_ALEN);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return cmacaddr(ofh12_port->hw_addr, OFP_ETH_ALEN);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return cmacaddr(ofh13_port->hw_addr, OFP_ETH_ALEN);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return cmacaddr(ofh14_port->hw_addr, OFP_ETH_ALEN);
 	} break;
 	default:
 		throw eBadVersion();
@@ -212,14 +222,17 @@ void
 cofport::set_hwaddr(cmacaddr const& maddr)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		memcpy(ofh10_port->hw_addr, maddr.somem(), OFP_ETH_ALEN);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		memcpy(ofh12_port->hw_addr, maddr.somem(), OFP_ETH_ALEN);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		memcpy(ofh13_port->hw_addr, maddr.somem(), OFP_ETH_ALEN);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		memcpy(ofh14_port->hw_addr, maddr.somem(), OFP_ETH_ALEN);
 	} break;
 	default:
 		throw eBadVersion();
@@ -231,17 +244,17 @@ std::string
 cofport::get_name() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
-		//return std::string(ofh10_port->name, OFP_MAX_PORT_NAME_LEN);
-		return std::string(ofh10_port->name, strlen(ofh10_port->name));
+	case rofl::openflow10::OFP_VERSION: {
+		return std::string(ofh10_port->name, strnlen(ofh10_port->name, OFP_MAX_PORT_NAME_LEN));
 	} break;
-	case openflow12::OFP_VERSION: {
-		//return std::string(ofh12_port->name, OFP_MAX_PORT_NAME_LEN);
-		return std::string(ofh12_port->name, strlen(ofh12_port->name));
+	case rofl::openflow12::OFP_VERSION: {
+		return std::string(ofh12_port->name, strnlen(ofh12_port->name, OFP_MAX_PORT_NAME_LEN));
 	} break;
-	case openflow13::OFP_VERSION: {
-		//return std::string(ofh13_port->name, OFP_MAX_PORT_NAME_LEN);
-		return std::string(ofh13_port->name, strlen(ofh13_port->name));
+	case rofl::openflow13::OFP_VERSION: {
+		return std::string(ofh13_port->name, strnlen(ofh13_port->name, OFP_MAX_PORT_NAME_LEN));
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return std::string(ofh14_port->name, strnlen(ofh14_port->name, OFP_MAX_PORT_NAME_LEN));
 	} break;
 	default:
 		throw eBadVersion();
@@ -257,17 +270,21 @@ cofport::set_name(std::string name)
 	size_t len = (name.length() > OFP_MAX_PORT_NAME_LEN) ? OFP_MAX_PORT_NAME_LEN : name.length();
 
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		memset(ofh10_port->name, 0, OFP_MAX_PORT_NAME_LEN);
 		memcpy(ofh10_port->name, name.c_str(), len);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		memset(ofh12_port->name, 0, OFP_MAX_PORT_NAME_LEN);
 		memcpy(ofh12_port->name, name.c_str(), len);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		memset(ofh13_port->name, 0, OFP_MAX_PORT_NAME_LEN);
 		memcpy(ofh13_port->name, name.c_str(), len);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		memset(ofh14_port->name, 0, OFP_MAX_PORT_NAME_LEN);
+		memcpy(ofh14_port->name, name.c_str(), len);
 	} break;
 	default:
 		throw eBadVersion();
@@ -280,14 +297,17 @@ uint32_t
 cofport::get_config() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		return be32toh(ofh10_port->config);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->config);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->config);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return be32toh(ofh14_port->config);
 	} break;
 	default:
 		throw eBadVersion();
@@ -301,14 +321,17 @@ void
 cofport::set_config(uint32_t config)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		ofh10_port->config = htobe32(config);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->config = htobe32(config);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->config = htobe32(config);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		ofh14_port->config = htobe32(config);
 	} break;
 	default:
 		throw eBadVersion();
@@ -321,14 +344,17 @@ uint32_t
 cofport::get_state() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		return be32toh(ofh10_port->state);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->state);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->state);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return be32toh(ofh14_port->state);
 	} break;
 	default:
 		throw eBadVersion();
@@ -342,14 +368,17 @@ void
 cofport::set_state(uint32_t state)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		ofh10_port->state = htobe32(state);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->state = htobe32(state);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->state = htobe32(state);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		ofh14_port->state = htobe32(state);
 	} break;
 	default:
 		throw eBadVersion();
@@ -362,14 +391,17 @@ uint32_t
 cofport::get_curr() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		return be32toh(ofh10_port->curr);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->curr);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->curr);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return properties.get_port_desc_ethernet().get_curr();
 	} break;
 	default:
 		throw eBadVersion();
@@ -383,14 +415,17 @@ void
 cofport::set_curr(uint32_t curr)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		ofh10_port->curr = htobe32(curr);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->curr = htobe32(curr);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->curr = htobe32(curr);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		properties.set_port_desc_ethernet().set_curr(curr);
 	} break;
 	default:
 		throw eBadVersion();
@@ -403,14 +438,17 @@ uint32_t
 cofport::get_advertised() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		return be32toh(ofh10_port->advertised);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->advertised);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->advertised);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return properties.get_port_desc_ethernet().get_advertised();
 	} break;
 	default:
 		throw eBadVersion();
@@ -424,14 +462,17 @@ void
 cofport::set_advertised(uint32_t advertised)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		ofh10_port->advertised = htobe32(advertised);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->advertised = htobe32(advertised);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->advertised = htobe32(advertised);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		properties.set_port_desc_ethernet().set_advertised(advertised);
 	} break;
 	default:
 		throw eBadVersion();
@@ -444,14 +485,17 @@ uint32_t
 cofport::get_supported() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		return be32toh(ofh10_port->supported);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->supported);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->supported);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return properties.get_port_desc_ethernet().get_supported();
 	} break;
 	default:
 		throw eBadVersion();
@@ -465,14 +509,17 @@ void
 cofport::set_supported(uint32_t supported)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		ofh10_port->supported = htobe32(supported);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->supported = htobe32(supported);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->supported = htobe32(supported);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		properties.set_port_desc_ethernet().set_supported(supported);
 	} break;
 	default:
 		throw eBadVersion();
@@ -485,14 +532,17 @@ uint32_t
 cofport::get_peer() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		return be32toh(ofh10_port->peer);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->peer);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->peer);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return properties.get_port_desc_ethernet().get_peer();
 	} break;
 	default:
 		throw eBadVersion();
@@ -506,14 +556,17 @@ void
 cofport::set_peer(uint32_t peer)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		ofh10_port->peer = htobe32(peer);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->peer = htobe32(peer);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->peer = htobe32(peer);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		properties.set_port_desc_ethernet().set_peer(peer);
 	} break;
 	default:
 		throw eBadVersion();
@@ -526,11 +579,14 @@ uint32_t
 cofport::get_curr_speed() const
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->curr_speed);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->curr_speed);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return properties.get_port_desc_ethernet().get_curr_speed();
 	} break;
 	default:
 		throw eBadVersion();
@@ -544,11 +600,14 @@ void
 cofport::set_curr_speed(uint32_t curr_speed)
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->curr_speed = htobe32(curr_speed);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->curr_speed = htobe32(curr_speed);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		properties.set_port_desc_ethernet().set_curr_speed(curr_speed);
 	} break;
 	default:
 		throw eBadVersion();
@@ -561,11 +620,14 @@ uint32_t
 cofport::get_max_speed() const
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		return be32toh(ofh12_port->max_speed);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		return be32toh(ofh13_port->max_speed);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		return properties.get_port_desc_ethernet().get_max_speed();
 	} break;
 	default:
 		throw eBadVersion();
@@ -579,11 +641,14 @@ void
 cofport::set_max_speed(uint32_t max_speed)
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION: {
 		ofh12_port->max_speed = htobe32(max_speed);
 	} break;
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow13::OFP_VERSION: {
 		ofh13_port->max_speed = htobe32(max_speed);
+	} break;
+	case rofl::openflow14::OFP_VERSION: {
+		properties.set_port_desc_ethernet().set_max_speed(max_speed);
 	} break;
 	default:
 		throw eBadVersion();
@@ -597,8 +662,8 @@ cofport::link_state_set_blocked()
 {
 	switch (ofp_version) {
 	// non-existing for OF 1.0
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		set_state(get_state() | openflow12::OFPPS_BLOCKED);
 	} break;
 	default:
@@ -612,8 +677,8 @@ void
 cofport::link_state_clr_blocked()
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		set_state(get_state() & ~openflow12::OFPPS_BLOCKED);
 	} break;
 	default:
@@ -627,8 +692,8 @@ bool
 cofport::link_state_is_blocked() const
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		return (get_state() & openflow12::OFPPS_BLOCKED);
 	} break;
 	default:
@@ -642,8 +707,8 @@ void
 cofport::link_state_set_live()
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		set_state(get_state() | openflow12::OFPPS_LIVE);
 	} break;
 	default:
@@ -657,8 +722,8 @@ void
 cofport::link_state_clr_live()
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		set_state(get_state() & ~openflow12::OFPPS_LIVE);
 	} break;
 	default:
@@ -672,8 +737,8 @@ bool
 cofport::link_state_is_live() const
 {
 	switch (ofp_version) {
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		return (get_state() & openflow12::OFPPS_LIVE);
 	} break;
 	default:
@@ -687,9 +752,9 @@ void
 cofport::link_state_set_link_down()
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION:
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION:
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		set_state(get_state() | openflow10::OFPPS_LINK_DOWN);
 	} break;
 	default:
@@ -703,9 +768,9 @@ void
 cofport::link_state_clr_link_down()
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION:
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION:
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		set_state(get_state() & ~openflow10::OFPPS_LINK_DOWN);
 	} break;
 	default:
@@ -719,9 +784,9 @@ bool
 cofport::link_state_is_link_down() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: return (get_state() & openflow10::OFPPS_LINK_DOWN); break;
-	case openflow12::OFP_VERSION: return (get_state() & openflow12::OFPPS_LINK_DOWN); break;
-	case openflow13::OFP_VERSION: return (get_state() & openflow12::OFPPS_LINK_DOWN); break; // FIXME: openflow13::OFPPS_LINK_DOWN, once it's been defined
+	case rofl::openflow10::OFP_VERSION: return (get_state() & openflow10::OFPPS_LINK_DOWN); break;
+	case rofl::openflow12::OFP_VERSION: return (get_state() & openflow12::OFPPS_LINK_DOWN); break;
+	case rofl::openflow13::OFP_VERSION: return (get_state() & openflow12::OFPPS_LINK_DOWN); break; // FIXME: openflow13::OFPPS_LINK_DOWN, once it's been defined
 	default:
 		throw eBadVersion();
 	}
@@ -733,9 +798,9 @@ void
 cofport::link_state_phy_down()
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION:
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION:
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		set_state(get_state() | openflow10::OFPPS_LINK_DOWN);
 	} break;
 	default:
@@ -749,9 +814,9 @@ void
 cofport::link_state_phy_up()
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION:
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION:
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		set_state(get_state() & ~openflow10::OFPPS_LINK_DOWN);
 	} break;
 	default:
@@ -765,9 +830,9 @@ bool
 cofport::link_state_phy_is_up() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION:
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION:
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		return not (get_state() & openflow10::OFPPS_LINK_DOWN);
 	} break;
 	default:
@@ -781,9 +846,9 @@ bool
 cofport::config_is_port_down() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION:
-	case openflow12::OFP_VERSION:
-	case openflow13::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION:
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
 		return (get_config() & openflow10::OFPPS_LINK_DOWN);
 	} break;
 	default:
@@ -800,14 +865,13 @@ cofport::recv_port_mod(
 		uint32_t advertise)
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: {
+	case rofl::openflow10::OFP_VERSION: {
 		recv_port_mod_of10(config, mask, advertise);
 	} break;
-	case openflow12::OFP_VERSION: {
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION:
+	case rofl::openflow14::OFP_VERSION: {
 		recv_port_mod_of12(config, mask, advertise);
-	} break;
-	case openflow13::OFP_VERSION: {
-		recv_port_mod_of13(config, mask, advertise);
 	} break;
 	default:
 		throw eBadVersion();
@@ -930,24 +994,14 @@ cofport::recv_port_mod_of12(
 
 
 
-void
-cofport::recv_port_mod_of13(
-		uint32_t config,
-		uint32_t mask,
-		uint32_t advertise)
-{
-	recv_port_mod_of12(config, mask, advertise);
-}
-
-
-
 size_t
 cofport::length() const
 {
 	switch (ofp_version) {
-	case openflow10::OFP_VERSION: return sizeof(struct openflow10::ofp_port);
-	case openflow12::OFP_VERSION: return sizeof(struct openflow12::ofp_port);
-	case openflow13::OFP_VERSION: return sizeof(struct openflow13::ofp_port);
+	case rofl::openflow10::OFP_VERSION: return sizeof(struct openflow10::ofp_port);
+	case rofl::openflow12::OFP_VERSION: return sizeof(struct openflow12::ofp_port);
+	case rofl::openflow13::OFP_VERSION: return sizeof(struct openflow13::ofp_port);
+	case rofl::openflow14::OFP_VERSION: return sizeof(struct openflow14::ofp_port) + properties.length();
 	default: throw eBadVersion();
 	}
 	return 0;
