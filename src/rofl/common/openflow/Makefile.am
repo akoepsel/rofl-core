@@ -43,6 +43,10 @@ libopenflow_la_SOURCES= \
 	cofport.cc \
 	cofports.h \
 	cofports.cc \
+	cofportdescprop.h \
+	cofportdescprop.cc \
+	cofportdescprops.h \
+	cofportdescprops.cc \
 	cofstats.h \
 	cofstats.cc \
 	cofdescstats.h \
@@ -150,6 +154,8 @@ library_include_HEADERS = \
 	coxmatches.h \
 	cofport.h \
 	cofports.h \
+	cofportdescprop.h \
+	cofportdescprops.h \
 	cofstats.h \
 	cofdescstats.h \
 	cofflowstatsarray.h \
