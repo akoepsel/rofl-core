@@ -10,6 +10,7 @@ libopenflow_la_SOURCES= \
 	openflow10.h  \
 	openflow12.h \
 	openflow13.h \
+	openflow14.h \
 	openflow_common.h \
 	openflow_experimental.h \
 	openflow_rofl_exceptions.h \
