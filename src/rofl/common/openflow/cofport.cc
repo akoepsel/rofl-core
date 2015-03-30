@@ -6,104 +6,19 @@
 
 using namespace rofl::openflow;
 
-cofport::cofport(
-		uint8_t ofp_version) :
-				ofp_version(ofp_version),
-				properties(ofp_version),
-				port_stats(ofp_version)
+size_t
+cofport::length() const
 {
 	switch (ofp_version) {
-	case rofl::openflow::OFP_VERSION_UNKNOWN: {
-		ofh_port = 0;
-	} break;
-	case rofl::openflow10::OFP_VERSION: {
-		resize(sizeof(struct rofl::openflow10::ofp_port));
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		resize(sizeof(struct rofl::openflow12::ofp_port));
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		resize(sizeof(struct rofl::openflow13::ofp_port));
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		resize(sizeof(struct rofl::openflow14::ofp_port));
-	} break;
+	case rofl::openflow10::OFP_VERSION:
+		return sizeof(struct openflow10::ofp_port);
+	case rofl::openflow12::OFP_VERSION:
+		return sizeof(struct openflow12::ofp_port);
+	case rofl::openflow13::OFP_VERSION:
+		return sizeof(struct openflow13::ofp_port);
 	default:
-		throw eBadVersion();
+		return sizeof(struct openflow14::ofp_port) + properties.length();
 	}
-}
-
-
-
-cofport::cofport(
-		uint8_t ofp_version,
-		uint8_t *buf,
-		size_t buflen) :
-				ofp_version(ofp_version),
-				properties(ofp_version),
-				port_stats(ofp_version)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		resize(sizeof(struct rofl::openflow10::ofp_port));
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		resize(sizeof(struct rofl::openflow12::ofp_port));
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		resize(sizeof(struct rofl::openflow13::ofp_port));
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		resize(sizeof(struct rofl::openflow14::ofp_port));
-	} break;
-	default:
-		throw eBadVersion();
-	}
-
-	unpack(buf, buflen);
-}
-
-
-
-cofport::cofport(
-		cofport const& port)
-{
-	*this = port;
-}
-
-
-
-cofport&
-cofport::operator= (cofport const& port)
-{
-	if (this == &port)
-		return *this;
-
-	ofp_version	= port.ofp_version;
-	port_stats 	= port.port_stats;
-	properties  = port.properties;
-
-	cmemory::operator= (port);
-
-	ofh_port = somem();
-
-	return *this;
-}
-
-
-
-cofport::~cofport()
-{
-
-}
-
-
-
-uint8_t*
-cofport::resize(
-		size_t len)
-{
-	return (ofh_port = cmemory::resize(len));
 }
 
 
@@ -115,7 +30,59 @@ cofport::pack(
 	if (buflen < length()) {
 		throw ePortInval("cofport::pack()");
 	}
-	memcpy(buf, somem(), length());
+
+	switch (get_version()) {
+	case rofl::openflow10::OFP_VERSION: {
+
+		struct rofl::openflow10::ofp_port* hdr =
+				(struct rofl::openflow10::ofp_port*)buf;
+
+		hdr->port_no    = htobe16(portno & 0x0000ffff);
+		memcpy(hdr->hw_addr, hwaddr.somem(), OFP_ETH_ALEN);
+		strncpy(hdr->name, name.c_str(), OFP_MAX_PORT_NAME_LEN);
+		hdr->config     = htobe32(config);
+		hdr->state      = htobe32(state);
+		hdr->curr       = htobe32(get_ethernet().get_curr());
+		hdr->advertised = htobe32(get_ethernet().get_advertised());
+		hdr->supported  = htobe32(get_ethernet().get_supported());
+		hdr->peer       = htobe32(get_ethernet().get_peer());
+
+	} break;
+	case rofl::openflow12::OFP_VERSION:
+	case rofl::openflow13::OFP_VERSION: {
+
+		struct rofl::openflow12::ofp_port* hdr =
+				(struct rofl::openflow12::ofp_port*)buf;
+
+		hdr->port_no    = htobe32(portno);
+		memcpy(hdr->hw_addr, hwaddr.somem(), OFP_ETH_ALEN);
+		strncpy(hdr->name, name.c_str(), OFP_MAX_PORT_NAME_LEN);
+		hdr->config     = htobe32(config);
+		hdr->state      = htobe32(state);
+		hdr->curr       = htobe32(get_ethernet().get_curr());
+		hdr->advertised = htobe32(get_ethernet().get_advertised());
+		hdr->supported  = htobe32(get_ethernet().get_supported());
+		hdr->peer       = htobe32(get_ethernet().get_peer());
+		hdr->curr_speed	= htobe32(get_ethernet().get_curr_speed());
+		hdr->max_speed	= htobe32(get_ethernet().get_max_speed());
+
+	} break;
+	default: {
+
+		struct rofl::openflow14::ofp_port* hdr =
+				(struct rofl::openflow14::ofp_port*)buf;
+
+		hdr->port_no    = htobe32(portno);
+		memcpy(hdr->hw_addr, hwaddr.somem(), OFP_ETH_ALEN);
+		strncpy(hdr->name, name.c_str(), OFP_MAX_PORT_NAME_LEN);
+		hdr->config     = htobe32(config);
+		hdr->state      = htobe32(state);
+
+		properties.pack((uint8_t*)hdr->properties,
+				buflen - sizeof(struct rofl::openflow14::ofp_port));
+
+	};
+	}
 }
 
 
@@ -124,534 +91,63 @@ void
 cofport::unpack(
 		uint8_t *buf, size_t buflen)
 {
-	switch (ofp_version) {
+	if (buflen < length())
+		throw ePortInval("cofport::unpack() too short");
+
+	switch (get_version()) {
 	case rofl::openflow10::OFP_VERSION: {
-		if (buflen < sizeof(struct rofl::openflow10::ofp_port))
-			throw ePortInval("cofport::unpack()");
-		assign(buf, sizeof(struct rofl::openflow10::ofp_port));
+
+		struct rofl::openflow10::ofp_port* hdr =
+				(struct rofl::openflow10::ofp_port*)buf;
+
+		portno = be16toh(hdr->port_no);
+		memcpy(hwaddr.somem(), hdr->hw_addr, OFP_ETH_ALEN);
+		name.assign(hdr->name, OFP_MAX_PORT_NAME_LEN);
+
+		config = be32toh(hdr->config);
+		state  = be32toh(hdr->state);
+		set_ethernet().set_curr(be32toh(hdr->curr));
+		set_ethernet().set_advertised(be32toh(hdr->advertised));
+		set_ethernet().set_supported(be32toh(hdr->supported));
+		set_ethernet().set_peer(be32toh(hdr->peer));
+
 	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		if (buflen < sizeof(struct rofl::openflow12::ofp_port))
-			throw ePortInval("cofport::unpack()");
-		assign(buf, sizeof(struct rofl::openflow12::ofp_port));
-	} break;
+	case rofl::openflow12::OFP_VERSION:
 	case rofl::openflow13::OFP_VERSION: {
-		if (buflen < sizeof(struct rofl::openflow13::ofp_port))
-			throw ePortInval("cofport::unpack()");
-		assign(buf, sizeof(struct rofl::openflow13::ofp_port));
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	ofh_port = somem();
-}
-
-
-
-uint32_t
-cofport::get_port_no() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return (uint32_t)be16toh((ofh10_port)->port_no);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->port_no);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->port_no);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return be32toh(ofh14_port->port_no);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
-
-
-
-void
-cofport::set_port_no(uint32_t port_no)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		ofh10_port->port_no = htobe16((uint16_t)(port_no & 0x0000ffff));
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->port_no = htobe32(port_no);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->port_no = htobe32(port_no);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		ofh14_port->port_no = htobe32(port_no);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
-
-
-
-rofl::cmacaddr
-cofport::get_hwaddr() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return cmacaddr(ofh10_port->hw_addr, OFP_ETH_ALEN);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return cmacaddr(ofh12_port->hw_addr, OFP_ETH_ALEN);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return cmacaddr(ofh13_port->hw_addr, OFP_ETH_ALEN);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return cmacaddr(ofh14_port->hw_addr, OFP_ETH_ALEN);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return cmacaddr("00:00:00:00:00:00");
-}
-
-
-void
-cofport::set_hwaddr(cmacaddr const& maddr)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		memcpy(ofh10_port->hw_addr, maddr.somem(), OFP_ETH_ALEN);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		memcpy(ofh12_port->hw_addr, maddr.somem(), OFP_ETH_ALEN);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		memcpy(ofh13_port->hw_addr, maddr.somem(), OFP_ETH_ALEN);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		memcpy(ofh14_port->hw_addr, maddr.somem(), OFP_ETH_ALEN);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
-
-
-std::string
-cofport::get_name() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return std::string(ofh10_port->name, strnlen(ofh10_port->name, OFP_MAX_PORT_NAME_LEN));
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return std::string(ofh12_port->name, strnlen(ofh12_port->name, OFP_MAX_PORT_NAME_LEN));
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return std::string(ofh13_port->name, strnlen(ofh13_port->name, OFP_MAX_PORT_NAME_LEN));
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return std::string(ofh14_port->name, strnlen(ofh14_port->name, OFP_MAX_PORT_NAME_LEN));
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return std::string("");
-}
-
-
-
-void
-cofport::set_name(std::string name)
-{
-	size_t len = (name.length() > OFP_MAX_PORT_NAME_LEN) ? OFP_MAX_PORT_NAME_LEN : name.length();
-
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		memset(ofh10_port->name, 0, OFP_MAX_PORT_NAME_LEN);
-		memcpy(ofh10_port->name, name.c_str(), len);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		memset(ofh12_port->name, 0, OFP_MAX_PORT_NAME_LEN);
-		memcpy(ofh12_port->name, name.c_str(), len);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		memset(ofh13_port->name, 0, OFP_MAX_PORT_NAME_LEN);
-		memcpy(ofh13_port->name, name.c_str(), len);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		memset(ofh14_port->name, 0, OFP_MAX_PORT_NAME_LEN);
-		memcpy(ofh14_port->name, name.c_str(), len);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
-
-
-
-uint32_t
-cofport::get_config() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return be32toh(ofh10_port->config);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->config);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->config);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return be32toh(ofh14_port->config);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
-
-
-
-void
-cofport::set_config(uint32_t config)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		ofh10_port->config = htobe32(config);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->config = htobe32(config);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->config = htobe32(config);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		ofh14_port->config = htobe32(config);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
-
-
-
-uint32_t
-cofport::get_state() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return be32toh(ofh10_port->state);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->state);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->state);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return be32toh(ofh14_port->state);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
-
-
-
-void
-cofport::set_state(uint32_t state)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		ofh10_port->state = htobe32(state);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->state = htobe32(state);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->state = htobe32(state);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		ofh14_port->state = htobe32(state);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
 
+		struct rofl::openflow12::ofp_port* hdr =
+				(struct rofl::openflow12::ofp_port*)buf;
 
+		portno = be32toh(hdr->port_no);
+		memcpy(hwaddr.somem(), hdr->hw_addr, OFP_ETH_ALEN);
+		name.assign(hdr->name, OFP_MAX_PORT_NAME_LEN);
 
-uint32_t
-cofport::get_curr() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return be32toh(ofh10_port->curr);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->curr);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->curr);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return properties.get_port_desc_ethernet().get_curr();
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
-
-
-
-void
-cofport::set_curr(uint32_t curr)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		ofh10_port->curr = htobe32(curr);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->curr = htobe32(curr);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->curr = htobe32(curr);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		properties.set_port_desc_ethernet().set_curr(curr);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
-
-
-
-uint32_t
-cofport::get_advertised() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return be32toh(ofh10_port->advertised);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->advertised);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->advertised);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return properties.get_port_desc_ethernet().get_advertised();
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
-
-
-
-void
-cofport::set_advertised(uint32_t advertised)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		ofh10_port->advertised = htobe32(advertised);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->advertised = htobe32(advertised);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->advertised = htobe32(advertised);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		properties.set_port_desc_ethernet().set_advertised(advertised);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
-
-
-
-uint32_t
-cofport::get_supported() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return be32toh(ofh10_port->supported);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->supported);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->supported);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return properties.get_port_desc_ethernet().get_supported();
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
-
-
-
-void
-cofport::set_supported(uint32_t supported)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		ofh10_port->supported = htobe32(supported);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->supported = htobe32(supported);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->supported = htobe32(supported);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		properties.set_port_desc_ethernet().set_supported(supported);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
-
-
-
-uint32_t
-cofport::get_peer() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		return be32toh(ofh10_port->peer);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->peer);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->peer);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return properties.get_port_desc_ethernet().get_peer();
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
-
-
-
-void
-cofport::set_peer(uint32_t peer)
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: {
-		ofh10_port->peer = htobe32(peer);
-	} break;
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->peer = htobe32(peer);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->peer = htobe32(peer);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		properties.set_port_desc_ethernet().set_peer(peer);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
-
-
-
-uint32_t
-cofport::get_curr_speed() const
-{
-	switch (ofp_version) {
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->curr_speed);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->curr_speed);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return properties.get_port_desc_ethernet().get_curr_speed();
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
-
-
+		config = be32toh(hdr->config);
+		state  = be32toh(hdr->state);
+		set_ethernet().set_curr(be32toh(hdr->curr));
+		set_ethernet().set_advertised(be32toh(hdr->advertised));
+		set_ethernet().set_supported(be32toh(hdr->supported));
+		set_ethernet().set_peer(be32toh(hdr->peer));
+		set_ethernet().set_curr_speed(be32toh(hdr->curr_speed));
+		set_ethernet().set_max_speed(be32toh(hdr->max_speed));
 
-void
-cofport::set_curr_speed(uint32_t curr_speed)
-{
-	switch (ofp_version) {
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->curr_speed = htobe32(curr_speed);
 	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->curr_speed = htobe32(curr_speed);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		properties.set_port_desc_ethernet().set_curr_speed(curr_speed);
-	} break;
-	default:
-		throw eBadVersion();
-	}
-}
+	default: {
 
+		struct rofl::openflow14::ofp_port* hdr =
+				(struct rofl::openflow14::ofp_port*)buf;
 
-
-uint32_t
-cofport::get_max_speed() const
-{
-	switch (ofp_version) {
-	case rofl::openflow12::OFP_VERSION: {
-		return be32toh(ofh12_port->max_speed);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		return be32toh(ofh13_port->max_speed);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		return properties.get_port_desc_ethernet().get_max_speed();
-	} break;
-	default:
-		throw eBadVersion();
-	}
-	return 0;
-}
+		portno = be32toh(hdr->port_no);
+		memcpy(hwaddr.somem(), hdr->hw_addr, OFP_ETH_ALEN);
+		name.assign(hdr->name, OFP_MAX_PORT_NAME_LEN);
 
+		config = be32toh(hdr->config);
+		state  = be32toh(hdr->state);
 
+		properties.unpack((uint8_t*)hdr->properties,
+				buflen - sizeof(struct rofl::openflow14::ofp_port));
 
-void
-cofport::set_max_speed(uint32_t max_speed)
-{
-	switch (ofp_version) {
-	case rofl::openflow12::OFP_VERSION: {
-		ofh12_port->max_speed = htobe32(max_speed);
-	} break;
-	case rofl::openflow13::OFP_VERSION: {
-		ofh13_port->max_speed = htobe32(max_speed);
-	} break;
-	case rofl::openflow14::OFP_VERSION: {
-		properties.set_port_desc_ethernet().set_max_speed(max_speed);
-	} break;
-	default:
-		throw eBadVersion();
+	};
 	}
 }
 
@@ -943,7 +439,7 @@ cofport::recv_port_mod_of10(
 	}
 
 	if (0 != advertise) {
-		set_advertised(advertise);
+		set_ethernet().set_advertised(advertise);
 	}
 }
 
@@ -988,23 +484,8 @@ cofport::recv_port_mod_of12(
 	}
 
 	if (0 != advertise) {
-		set_advertised(advertise);
+		set_ethernet().set_advertised(advertise);
 	}
-}
-
-
-
-size_t
-cofport::length() const
-{
-	switch (ofp_version) {
-	case rofl::openflow10::OFP_VERSION: return sizeof(struct openflow10::ofp_port);
-	case rofl::openflow12::OFP_VERSION: return sizeof(struct openflow12::ofp_port);
-	case rofl::openflow13::OFP_VERSION: return sizeof(struct openflow13::ofp_port);
-	case rofl::openflow14::OFP_VERSION: return sizeof(struct openflow14::ofp_port) + properties.length();
-	default: throw eBadVersion();
-	}
-	return 0;
 }
 
 

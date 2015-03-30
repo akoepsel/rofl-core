@@ -2459,13 +2459,13 @@ crofdpt::port_status_rcvd(
 
 	switch (port_status.get_reason()) {
 	case openflow::OFPPR_ADD: {
-		ports.add_port(port_status.get_port().get_port_no()) = port_status.get_port();
+		ports.add_port(port_status.get_port().get_portno()) = port_status.get_port();
 	} break;
 	case openflow::OFPPR_DELETE: {
-		ports.drop_port(port_status.get_port().get_port_no());
+		ports.drop_port(port_status.get_port().get_portno());
 	} break;
 	case openflow::OFPPR_MODIFY: {
-		ports.set_port(port_status.get_port().get_port_no()) = port_status.get_port();
+		ports.set_port(port_status.get_port().get_portno()) = port_status.get_port();
 	} break;
 	default: {
 		delete msg; return;
