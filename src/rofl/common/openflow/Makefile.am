@@ -111,6 +111,8 @@ libopenflow_la_SOURCES= \
 	coftables.cc \
 	coftablemodprop.h \
 	coftablemodprop.cc \
+	coftablemodprops.h \
+	coftablemodprops.cc \
 	cofasyncconfig.h \
 	cofasyncconfig.cc \
 	cofrole.h \
@@ -191,6 +193,7 @@ library_include_HEADERS = \
 	coftablefeatures.h \
 	coftables.h \
 	coftablemodprop.h \
+	coftablemodprops.h \
 	cofasyncconfig.h \
 	cofrole.h \
 	cofmeterbandstats.h \
