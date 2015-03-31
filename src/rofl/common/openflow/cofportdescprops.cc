@@ -74,6 +74,23 @@ cofportdesc_props::pack(uint8_t *buf, size_t buflen)
 
 	switch (ofp_version) {
 	case openflow14::OFP_VERSION: {
+#if 0
+		if (has_port_desc_ethernet()) {
+			set_port_desc_ethernet().pack(buf, set_port_desc_ethernet().length());
+			buf += set_port_desc_ethernet().length();
+			buflen -= set_port_desc_ethernet().length();
+		}
+		if (has_port_desc_optical()) {
+			set_port_desc_optical().pack(buf, set_port_desc_optical().length());
+			buf += set_port_desc_optical().length();
+			buflen -= set_port_desc_optical().length();
+		}
+		if (has_port_desc_experimenter()) {
+			set_port_desc_experimenter().pack(buf, set_port_desc_experimenter().length());
+			buf += set_port_desc_experimenter().length();
+			buflen -= set_port_desc_experimenter().length();
+		}
+#endif
 		for (std::map<uint16_t, cofportdesc_prop*>::iterator
 				it = properties.begin(); it != properties.end(); ++it) {
 			cofportdesc_prop& prop = *(it->second);

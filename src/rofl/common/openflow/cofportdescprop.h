@@ -174,7 +174,6 @@ public:
 				<< std::hex
 				<< "type: 0x" << (int)prop.get_type() << " "
 				<< std::dec
-				<< "length: " << (int)prop.get_length() << " "
 				<< ">" << std::endl;
 		return os;
 	};

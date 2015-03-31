@@ -155,10 +155,10 @@ cofports::unpack(
 				return;
 
 			cofport port(ofp_version, buf, sizeof(struct rofl::openflow10::ofp_port));
-			if (ports.find(port.get_portno()) != ports.end()) {
-				delete ports[port.get_portno()];
+			if (ports.find(port.get_port_no()) != ports.end()) {
+				delete ports[port.get_port_no()];
 			}
-			ports[port.get_portno()] = new cofport(port);
+			ports[port.get_port_no()] = new cofport(port);
 
 			buf += sizeof(struct rofl::openflow10::ofp_port);
 			buflen -= sizeof(struct rofl::openflow10::ofp_port);
@@ -169,10 +169,10 @@ cofports::unpack(
 				return;
 
 			cofport port(ofp_version, buf, sizeof(struct rofl::openflow12::ofp_port));
-			if (ports.find(port.get_portno()) != ports.end()) {
-				delete ports[port.get_portno()];
+			if (ports.find(port.get_port_no()) != ports.end()) {
+				delete ports[port.get_port_no()];
 			}
-			ports[port.get_portno()] = new cofport(port);
+			ports[port.get_port_no()] = new cofport(port);
 
 			buf += sizeof(struct rofl::openflow12::ofp_port);
 			buflen -= sizeof(struct rofl::openflow12::ofp_port);
@@ -183,10 +183,10 @@ cofports::unpack(
 				return;
 
 			cofport port(ofp_version, buf, sizeof(struct rofl::openflow13::ofp_port));
-			if (ports.find(port.get_portno()) != ports.end()) {
-				delete ports[port.get_portno()];
+			if (ports.find(port.get_port_no()) != ports.end()) {
+				delete ports[port.get_port_no()];
 			}
-			ports[port.get_portno()] = new cofport(port);
+			ports[port.get_port_no()] = new cofport(port);
 
 			buf += sizeof(struct rofl::openflow13::ofp_port);
 			buflen -= sizeof(struct rofl::openflow13::ofp_port);
@@ -207,7 +207,7 @@ cofports::add_port(uint32_t portno)
 		ports.erase(portno);
 	}
 	ports[portno] = new cofport(ofp_version);
-	ports[portno]->set_portno(portno);
+	ports[portno]->set_port_no(portno);
 	return *(ports[portno]);
 }
 
@@ -218,7 +218,7 @@ cofports::set_port(uint32_t portno)
 {
 	if (ports.find(portno) == ports.end()) {
 		ports[portno] = new cofport(ofp_version);
-		ports[portno]->set_portno(portno);
+		ports[portno]->set_port_no(portno);
 	}
 	return *(ports[portno]);
 }

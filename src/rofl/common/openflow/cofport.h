@@ -174,11 +174,11 @@ public:
 public:
 
 	uint32_t
-	get_portno() const
+	get_port_no() const
 	{ return portno; };
 
 	void
-	set_portno(
+	set_port_no(
 			uint32_t portno)
 	{ this->portno = portno; };
 
@@ -399,12 +399,11 @@ public:
 	friend std::ostream&
 	operator<< (std::ostream& os, cofport const& port) {
 		os << indent(0) << "<cofport >" << std::endl;
-		os << indent(2) << "<portno:" << (int)port.get_portno()	<< " >" << std::endl;
-		os << indent(2) << "<hwaddr: >"	<< std::endl;
-			{ rofl::indent i(4); os << port.get_hwaddr(); }
-		os << indent(2) << "<name:" << port.get_name() << " >" << std::endl;
-		os << indent(2) << "<config:" << (int)port.get_config()	<< " >" << std::endl;
-		os << indent(2) << "<state:" << (int)port.get_state() << " >" << std::endl;
+		os << indent(2) << "<portno: " << (int)port.get_port_no() << " >" << std::endl;
+		os << indent(2) << "<hwaddr: " << port.get_hwaddr().str() << " >"	<< std::endl;
+		os << indent(2) << "<name: " << port.get_name() << " >" << std::endl;
+		os << indent(2) << "<config: " << (int)port.get_config()	<< " >" << std::endl;
+		os << indent(2) << "<state: " << (int)port.get_state() << " >" << std::endl;
 		if (port.has_ethernet()) {
 			rofl::indent i(2); os << port.get_ethernet();
 		}
@@ -436,10 +435,10 @@ public:
 	cofport_find_by_port_no(uint32_t _port_no) :
 		port_no(_port_no) {};
 	bool operator() (cofport *ofport) {
-		return (ofport->get_portno() == port_no);
+		return (ofport->get_port_no() == port_no);
 	};
 	bool operator() (std::pair<uint32_t, cofport*> const& p) {
-		return (p.second->get_portno() == port_no);
+		return (p.second->get_port_no() == port_no);
 	};
 };
 
@@ -482,7 +481,7 @@ public:
 	cofport_find_port_no(uint32_t port_no) :
 		port_no(port_no) {};
 	bool operator() (cofport const& ofport) {
-		return (ofport.get_portno() == port_no);
+		return (ofport.get_port_no() == port_no);
 	};
 	uint32_t port_no;
 };
