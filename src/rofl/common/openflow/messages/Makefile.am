@@ -2,8 +2,13 @@ MAINTAINERCLEANFILES = Makefile.in
 
 noinst_LTLIBRARIES = libopenflow_messages.la
 libopenflow_messages_la_SOURCES = \
-	cofmsg_aggr_stats.h \
+	cofmsg.h \
+	cofmsg.cc \
 	cofmsg_barrier.h \
+	cofmsg_barrier.cc \
+	cofmsg_hello.h \
+	cofmsg_hello.cc \
+	cofmsg_aggr_stats.h \
 	cofmsg_config.h \
 	cofmsg_desc_stats.h \
 	cofmsg_echo.h \
@@ -17,8 +22,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_group_features_stats.h \
 	cofmsg_group_mod.h \
 	cofmsg_group_stats.h \
-	cofmsg.h \
-	cofmsg_hello.h \
 	cofmsg_packet_in.h \
 	cofmsg_packet_out.h \
 	cofmsg_port_mod.h \
@@ -34,8 +37,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_table_features_stats.h \
 	cofmsg_experimenter.h \
 	cofmsg_aggr_stats.cc \
-	cofmsg_barrier.cc \
-	cofmsg.cc \
 	cofmsg_config.cc \
 	cofmsg_desc_stats.cc \
 	cofmsg_echo.cc \
@@ -49,7 +50,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_group_features_stats.cc \
 	cofmsg_group_mod.cc \
 	cofmsg_group_stats.cc \
-	cofmsg_hello.cc \
 	cofmsg_packet_in.cc \
 	cofmsg_packet_out.cc \
 	cofmsg_port_mod.cc \
