@@ -52,13 +52,6 @@ public:
 	 *
 	 */
 	cofmsg_barrier_request(
-			const rofl::cmemory& mem)
-	{ unpack(mem.somem(), mem.memlen()); };
-
-	/**
-	 *
-	 */
-	cofmsg_barrier_request(
 			const cofmsg_barrier_request& msg)
 	{ *this = msg; };
 
@@ -171,13 +164,6 @@ public:
 		};
 		}
 	};
-
-	/**
-	 *
-	 */
-	cofmsg_barrier_reply(
-			const rofl::cmemory& mem)
-	{ unpack(mem.somem(), mem.memlen()); };
 
 	/**
 	 *

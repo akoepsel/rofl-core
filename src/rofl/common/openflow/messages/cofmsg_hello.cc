@@ -13,13 +13,13 @@ cofmsg_hello::length() const
 void
 cofmsg_hello::pack(uint8_t *buf, size_t buflen)
 {
-	if ((0 == buf) || (buflen == 0))
+	cofmsg::pack(buf, buflen);
+
+	if ((0 == buf) || (0 == buflen))
 		return;
 
-	if (buflen < length())
-		throw eInval();
-
-	cofmsg::pack(buf, buflen);
+	if (buflen < get_length())
+		throw eMsgInval("cofmsg_hello::pack() buf too short");
 
 	helloelems.pack(buf + sizeof(struct rofl::openflow::ofp_header),
 			buflen - sizeof(struct rofl::openflow::ofp_header));
@@ -30,13 +30,10 @@ cofmsg_hello::pack(uint8_t *buf, size_t buflen)
 void
 cofmsg_hello::unpack(uint8_t *buf, size_t buflen)
 {
-	if ((0 == buf) || (buflen == 0))
-		return;
-
-	if (buflen < length())
-		throw eInval();
-
 	cofmsg::unpack(buf, buflen);
+
+	if ((0 == buf) || (0 == buflen))
+		return;
 
 	if (get_length() <= sizeof(struct rofl::openflow::ofp_header))
 		return;

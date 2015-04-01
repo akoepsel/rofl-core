@@ -18,18 +18,20 @@ void
 cofmsg::pack(
 		uint8_t *buf, size_t buflen)
 {
+	len = length(); // call overwritten length() method here
+
 	if ((0 == buf) || (0 == buflen))
 		return;
 
-	if (buflen < cofmsg::length())
-		throw eMsgInval("cofmsg::pack()");
+	if (buflen < len)
+		throw eMsgInval("cofmsg::pack() buf too short");
 
 	struct rofl::openflow::ofp_header* hdr =
 			(struct rofl::openflow::ofp_header*)buf;
 
 	hdr->version = version;
 	hdr->type    = type;
-	hdr->length  = htobe16(length()); // call overwritten length() method
+	hdr->length  = htobe16(len);
 	hdr->xid     = htobe32(xid);
 }
 
@@ -43,7 +45,7 @@ cofmsg::unpack(
 		return;
 
 	if (buflen < cofmsg::length())
-		throw eMsgInval("cofmsg::unpack()");
+		throw eMsgInval("cofmsg::unpack() buf too short (header)");
 
 	struct rofl::openflow::ofp_header* hdr =
 			(struct rofl::openflow::ofp_header*)buf;
@@ -53,8 +55,8 @@ cofmsg::unpack(
 	len     = be16toh(hdr->length);
 	xid     = be32toh(hdr->xid);
 
-	if (len < cofmsg::length())
-		throw eMsgInval("cofmsg::unpack()");
+	if ((len < cofmsg::length()) || (len > buflen))
+		throw eMsgInval("cofmsg::unpack() buf too short (payload)");
 }
 
 

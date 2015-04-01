@@ -43,13 +43,6 @@ public:
 	 *
 	 */
 	cofmsg_hello(
-			const rofl::cmemory& mem)
-	{ unpack(mem.somem(), mem.memlen()); };
-
-	/**
-	 *
-	 */
-	cofmsg_hello(
 			const cofmsg_hello& msg)
 	{ *this = msg; };
 
