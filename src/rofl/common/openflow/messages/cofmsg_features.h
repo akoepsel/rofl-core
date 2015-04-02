@@ -319,7 +319,7 @@ public:
 	std::string
 	str() const {
 		std::stringstream ss;
-		ss << "-Features-Reply- " << cofmsg::str() << " ";
+		ss << cofmsg::str() << "-Features-Reply- " << " ";
 		ss << "dpid: " << cdpid(get_dpid()).str() << ", ";
 		if (get_version() >= rofl::openflow13::OFP_VERSION) {
 			ss << "auxid: " << cauxid(get_auxid()).str() << ", ";

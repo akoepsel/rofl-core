@@ -16,8 +16,9 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_experimenter.cc \
 	cofmsg_features.h \
 	cofmsg_features.cc \
-	cofmsg_aggr_stats.h \
 	cofmsg_config.h \
+	cofmsg_config.cc \
+	cofmsg_aggr_stats.h \
 	cofmsg_desc_stats.h \
 	cofmsg_experimenter_stats.h \
 	cofmsg_flow_mod.h \
@@ -41,7 +42,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_table_stats.h \
 	cofmsg_table_features_stats.h \
 	cofmsg_aggr_stats.cc \
-	cofmsg_config.cc \
 	cofmsg_desc_stats.cc \
 	cofmsg_experimenter_stats.cc \
 	cofmsg_flow_mod.cc \
@@ -79,8 +79,8 @@ library_include_HEADERS = \
 	cofmsg_echo.h \
 	cofmsg_experimenter.h \
 	cofmsg_features.h \
-	cofmsg_aggr_stats.h \
 	cofmsg_config.h \
+	cofmsg_aggr_stats.h \
 	cofmsg_desc_stats.h \
 	cofmsg_experimenter_stats.h \
 	cofmsg_flow_mod.h \
