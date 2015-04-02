@@ -108,14 +108,17 @@ public:
 				auxid(auxid),
 				capabilities(capabilities),
 				actions(actions_bitmap),
-				ports(version)
+				ports(ports)
 	{
 		switch (get_version()) {
 		case rofl::openflow10::OFP_VERSION: {
-			set_length(sizeof(struct rofl::openflow10::ofp_switch_features)/* =32 */);
+			set_length(sizeof(struct rofl::openflow10::ofp_switch_features)/* =32 */ + ports.length());
+		} break;
+		case rofl::openflow12::OFP_VERSION: {
+			set_length(sizeof(struct rofl::openflow12::ofp_switch_features)/* =32 */ + ports.length());
 		} break;
 		default: {
-			set_length(sizeof(struct rofl::openflow12::ofp_switch_features)/* =32 */);
+			set_length(sizeof(struct rofl::openflow13::ofp_switch_features)/* =32 */);
 		};
 		}
 	};
