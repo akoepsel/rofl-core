@@ -11,7 +11,8 @@ cofmsg_error::length() const
 
 
 void
-cofmsg_error::pack(uint8_t *buf, size_t buflen)
+cofmsg_error::pack(
+		uint8_t *buf, size_t buflen)
 {
 	cofmsg::pack(buf, buflen);
 
@@ -34,7 +35,8 @@ cofmsg_error::pack(uint8_t *buf, size_t buflen)
 
 
 void
-cofmsg_error::unpack(uint8_t *buf, size_t buflen)
+cofmsg_error::unpack(
+		uint8_t *buf, size_t buflen)
 {
 	cofmsg::unpack(buf, buflen);
 
@@ -53,4 +55,5 @@ cofmsg_error::unpack(uint8_t *buf, size_t buflen)
 	body.unpack(buf + sizeof(struct rofl::openflow::ofp_error_msg),
 			buflen - sizeof(struct rofl::openflow::ofp_error_msg));
 }
+
 

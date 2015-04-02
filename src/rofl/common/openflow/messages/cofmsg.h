@@ -43,7 +43,7 @@ public:
 	cofmsg() :
 		version(0),
 		type(0),
-		len(sizeof(struct rofl::openflow::ofp_action_header)),
+		len(sizeof(struct rofl::openflow::ofp_header)),
 		xid(0)
 	{};
 
@@ -51,13 +51,13 @@ public:
 	 *
 	 */
 	cofmsg(
-			uint8_t ofp_version,
+			uint8_t version,
 			uint8_t type,
 			uint16_t len,
 			uint32_t xid) :
-				version(ofp_version),
+				version(version),
 				type(type),
-				len(sizeof(struct rofl::openflow::ofp_action_header) + len),
+				len(sizeof(struct rofl::openflow::ofp_header) + len),
 				xid(xid)
 	{};
 
