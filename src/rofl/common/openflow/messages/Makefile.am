@@ -12,6 +12,8 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_error.cc \
 	cofmsg_echo.h \
 	cofmsg_echo.cc \
+	cofmsg_experimenter.h \
+	cofmsg_experimenter.cc \
 	cofmsg_aggr_stats.h \
 	cofmsg_config.h \
 	cofmsg_desc_stats.h \
@@ -37,7 +39,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_table_mod.h \
 	cofmsg_table_stats.h \
 	cofmsg_table_features_stats.h \
-	cofmsg_experimenter.h \
 	cofmsg_aggr_stats.cc \
 	cofmsg_config.cc \
 	cofmsg_desc_stats.cc \
@@ -63,7 +64,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_table_mod.cc \
 	cofmsg_table_stats.cc \
 	cofmsg_table_features_stats.cc \
-	cofmsg_experimenter.cc \
 	cofmsg_async_config.cc \
 	cofmsg_meter_mod.cc \
 	cofmsg_meter_features_stats.cc \
@@ -77,6 +77,7 @@ library_include_HEADERS = \
 	cofmsg_barrier.h \
 	cofmsg_error.h \
 	cofmsg_echo.h \
+	cofmsg_experimenter.h \
 	cofmsg_aggr_stats.h \
 	cofmsg_config.h \
 	cofmsg_desc_stats.h \
@@ -102,7 +103,6 @@ library_include_HEADERS = \
 	cofmsg_table_mod.h \
 	cofmsg_table_stats.h \
 	cofmsg_table_features_stats.h \
-	cofmsg_experimenter.h \
 	cofmsg_async_config.h \
 	cofmsg_meter_mod.h \
 	cofmsg_meter_features_stats.h \
