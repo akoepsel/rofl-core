@@ -56,6 +56,8 @@ cofmsg_port_status::pack(uint8_t *buf, size_t buflen)
 void
 cofmsg_port_status::unpack(uint8_t *buf, size_t buflen)
 {
+	port.clear();
+
 	cofmsg::unpack(buf, buflen);
 
 	if ((0 == buf) || (0 == buflen))

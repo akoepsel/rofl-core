@@ -146,6 +146,13 @@ public:
 	/**
 	 *
 	 */
+	void
+	clear()
+	{ properties.clear(); };
+
+	/**
+	 *
+	 */
 	const rofl::openflow::cofport_stats_reply&
 	get_port_stats() const
 	{ return port_stats; };
