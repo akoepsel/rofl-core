@@ -22,6 +22,8 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_packet_in.cc \
 	cofmsg_flow_removed.h \
 	cofmsg_flow_removed.cc \
+	cofmsg_port_status.h \
+	cofmsg_port_status.cc \
 	cofmsg_packet_out.h \
 	cofmsg_packet_out.cc \
 	cofmsg_aggr_stats.h \
@@ -36,7 +38,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_port_mod.h \
 	cofmsg_port_stats.h \
 	cofmsg_port_desc_stats.h \
-	cofmsg_port_status.h \
 	cofmsg_queue_get_config.h \
 	cofmsg_queue_stats.h \
 	cofmsg_role.h \
@@ -56,7 +57,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_port_mod.cc \
 	cofmsg_port_stats.cc \
 	cofmsg_port_desc_stats.cc \
-	cofmsg_port_status.cc \
 	cofmsg_queue_get_config.cc \
 	cofmsg_queue_stats.cc \
 	cofmsg_role.cc \
@@ -82,6 +82,7 @@ library_include_HEADERS = \
 	cofmsg_config.h \
 	cofmsg_packet_in.h \
 	cofmsg_flow_removed.h \
+	cofmsg_port_status.h \
 	cofmsg_packet_out.h \
 	cofmsg_aggr_stats.h \
 	cofmsg_desc_stats.h \
@@ -95,7 +96,6 @@ library_include_HEADERS = \
 	cofmsg_port_mod.h \
 	cofmsg_port_stats.h \
 	cofmsg_port_desc_stats.h \
-	cofmsg_port_status.h \
 	cofmsg_queue_get_config.h \
 	cofmsg_queue_stats.h \
 	cofmsg_role.h \

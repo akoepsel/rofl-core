@@ -83,6 +83,8 @@ void
 cofmsg_flow_removed::unpack(
 		uint8_t *buf, size_t buflen)
 {
+	match.clear();
+
 	cofmsg::unpack(buf, buflen);
 
 	if ((0 == buf) || (0 == buflen))
