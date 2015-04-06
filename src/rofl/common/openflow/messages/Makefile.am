@@ -26,10 +26,11 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_port_status.cc \
 	cofmsg_packet_out.h \
 	cofmsg_packet_out.cc \
+	cofmsg_flow_mod.h \
+	cofmsg_flow_mod.cc \
 	cofmsg_aggr_stats.h \
 	cofmsg_desc_stats.h \
 	cofmsg_experimenter_stats.h \
-	cofmsg_flow_mod.h \
 	cofmsg_flow_stats.h \
 	cofmsg_group_desc_stats.h \
 	cofmsg_group_features_stats.h \
@@ -48,7 +49,6 @@ libopenflow_messages_la_SOURCES = \
 	cofmsg_aggr_stats.cc \
 	cofmsg_desc_stats.cc \
 	cofmsg_experimenter_stats.cc \
-	cofmsg_flow_mod.cc \
 	cofmsg_flow_stats.cc \
 	cofmsg_group_desc_stats.cc \
 	cofmsg_group_features_stats.cc \
@@ -83,11 +83,11 @@ library_include_HEADERS = \
 	cofmsg_packet_in.h \
 	cofmsg_flow_removed.h \
 	cofmsg_port_status.h \
+	cofmsg_flow_mod.h \
 	cofmsg_packet_out.h \
 	cofmsg_aggr_stats.h \
 	cofmsg_desc_stats.h \
 	cofmsg_experimenter_stats.h \
-	cofmsg_flow_mod.h \
 	cofmsg_flow_stats.h \
 	cofmsg_group_desc_stats.h \
 	cofmsg_group_features_stats.h \
