@@ -62,6 +62,10 @@ crofcore::terminate()
 	}
 	workers.clear();
 	crofcore::initialized = false;
+
+	rofl::cioloop::get_loop().shutdown();
+
+	rofl::cioloop::get_loop().cleanup_on_exit();
 }
 
 
