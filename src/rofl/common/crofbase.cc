@@ -8,83 +8,20 @@
 
 using namespace rofl;
 
-/*static*/bool                   crofbase::rofbase_initialized = false;
-/*static*/unsigned int           crofbase::next_worker_id = 0;
-/*static*/unsigned int           crofbase::workers_num = 1;
-/*static*/std::vector<pthread_t> crofbase::workers;
-/*static*/std::set<crofbase*>    crofbase::rofbases;
-/*static*/PthreadRwLock          crofbase::rofbases_rwlock;
-
-/*static*/
-pthread_t
-crofbase::get_next_worker_tid()
-{
-	crofbase::rofbase_init();
-	RwLock(rofbases_rwlock, RwLock::RWLOCK_READ);
-	next_worker_id =
-			(next_worker_id == (workers.size() - 1)) ?
-					0 : next_worker_id + 1;
-	return workers[next_worker_id];
-}
-
-
-/*static*/
-void
-crofbase::rofbase_init()
-{
-	if (crofbase::rofbase_initialized) {
-		return;
-	}
-
-	RwLock(rofbases_rwlock, RwLock::RWLOCK_WRITE);
-	for (unsigned int i = 0; i < workers_num; i++) {
-		workers.push_back(cioloop::add_thread());
-	}
-	crofbase::rofbase_initialized = true;
-}
-
-
-
-/*static*/
-void
-crofbase::rofbase_term()
-{
-	if (not crofbase::rofbase_initialized) {
-		return;
-	}
-
-	RwLock(rofbases_rwlock, RwLock::RWLOCK_WRITE);
-	for (std::vector<pthread_t>::iterator
-			it = workers.begin(); it != workers.end(); ++it) {
-		cioloop::drop_thread(*it);
-	}
-	workers.clear();
-	crofbase::rofbase_initialized = false;
-}
-
 
 
 crofbase::crofbase(
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap) :
-				rofbase_tid(crofbase::get_next_worker_tid()),
 				versionbitmap(versionbitmap),
-				transactions(this, rofbase_tid),
+				transactions(this, get_thread_id()),
 				generation_is_defined(false),
 				cached_generation_id((uint64_t)((int64_t)-1))
-{
-	RwLock(rofbases_rwlock, RwLock::RWLOCK_WRITE);
-	crofbase::rofbases.insert(this);
-}
+{}
 
 
 
 crofbase::~crofbase()
 {
-	{
-		RwLock(rofbases_rwlock, RwLock::RWLOCK_WRITE);
-		crofbase::rofbases.erase(this);
-	}
-
 	try {
 		// close the listening sockets
 		close_dpt_listening();

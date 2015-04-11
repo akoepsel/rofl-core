@@ -25,6 +25,7 @@
 	#include "endian_conversion.h"
 #endif
 
+#include "rofl/common/crofcore.h"
 #include "rofl/common/ciosrv.h"
 #include "rofl/common/croflexception.h"
 #include "rofl/common/csocket.h"
@@ -99,6 +100,7 @@ class eRofBaseCongested             : public eRofBase {}; // control channel is 
  */
 class crofbase :
 	public rofl::ciosrv,
+	public rofl::crofcore,
 	public rofl::csocket_env,
 	public rofl::crofconn_env,
 	public rofl::ctransactions_env,
@@ -167,7 +169,7 @@ public:
 			delete dpt_sockets[sockid];
 			dpt_sockets.erase(sockid);
 		}
-		dpt_sockets[sockid] = csocket::csocket_factory(socket_type, this, get_thread_id());
+		dpt_sockets[sockid] = csocket::csocket_factory(socket_type, this, crofcore::get_worker_thread_id());
 		dpt_sockets[sockid]->listen(params);
 		return *(dpt_sockets[sockid]);
 	};
@@ -187,7 +189,7 @@ public:
 			const rofl::cparams& params) {
 		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
 		if (dpt_sockets.find(sockid) == dpt_sockets.end()) {
-			dpt_sockets[sockid] = csocket::csocket_factory(socket_type, this, get_thread_id());
+			dpt_sockets[sockid] = csocket::csocket_factory(socket_type, this, crofcore::get_worker_thread_id());
 			dpt_sockets[sockid]->listen(params);
 		}
 		return *(dpt_sockets[sockid]);
@@ -277,7 +279,7 @@ public:
 			delete ctl_sockets[sockid];
 			ctl_sockets.erase(sockid);
 		}
-		ctl_sockets[sockid] = csocket::csocket_factory(socket_type, this, get_thread_id());
+		ctl_sockets[sockid] = csocket::csocket_factory(socket_type, this, crofcore::get_worker_thread_id());
 		ctl_sockets[sockid]->listen(params);
 		return *(ctl_sockets[sockid]);
 	};
@@ -297,7 +299,7 @@ public:
 			const rofl::cparams& params) {
 		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
 		if (ctl_sockets.find(sockid) == ctl_sockets.end()) {
-			ctl_sockets[sockid] = csocket::csocket_factory(socket_type, this, get_thread_id());
+			ctl_sockets[sockid] = csocket::csocket_factory(socket_type, this, crofcore::get_worker_thread_id());
 			ctl_sockets[sockid]->listen(params);
 		}
 		return *(ctl_sockets[sockid]);
@@ -416,7 +418,7 @@ public:
 			delete rofdpts[dptid];
 			rofdpts.erase(dptid);
 		}
-		rofdpts[dptid] = new crofdpt(this, dptid, remove_on_channel_close, versionbitmap, dpid, get_thread_id());
+		rofdpts[dptid] = new crofdpt(this, dptid, remove_on_channel_close, versionbitmap, dpid, crofcore::get_worker_thread_id());
 		return *(rofdpts[dptid]);
 	};
 
@@ -444,7 +446,7 @@ public:
 		const rofl::cdpid& dpid = rofl::cdpid(0)) {
 		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
 		if (rofdpts.find(dptid) == rofdpts.end()) {
-			rofdpts[dptid] = new crofdpt(this, dptid, remove_on_channel_close, versionbitmap, dpid, get_thread_id());
+			rofdpts[dptid] = new crofdpt(this, dptid, remove_on_channel_close, versionbitmap, dpid, crofcore::get_worker_thread_id());
 		}
 		return *(rofdpts[dptid]);
 	};
@@ -585,7 +587,7 @@ public:
 			delete rofctls[ctlid];
 			rofctls.erase(ctlid);
 		}
-		rofctls[ctlid] = new crofctl(this, ctlid, remove_on_channel_close, versionbitmap, get_thread_id());
+		rofctls[ctlid] = new crofctl(this, ctlid, remove_on_channel_close, versionbitmap, crofcore::get_worker_thread_id());
 		return *(rofctls[ctlid]);
 	};
 
@@ -611,7 +613,7 @@ public:
 		bool remove_on_channel_close = false) {
 		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
 		if (rofctls.find(ctlid) == rofctls.end()) {
-			rofctls[ctlid] = new crofctl(this, ctlid, remove_on_channel_close, versionbitmap, get_thread_id());
+			rofctls[ctlid] = new crofctl(this, ctlid, remove_on_channel_close, versionbitmap, crofcore::get_worker_thread_id());
 		}
 		return *(rofctls[ctlid]);
 	};
@@ -2544,48 +2546,8 @@ private:
 		handle_ctl_close(ctlid);
 	};
 
-protected:
-
-	/**
-	 * @brief	Set number of running running threads for rofl-common.
-	 */
-	static void
-	set_num_of_workers(
-			unsigned int n)
-	{ workers_num = n; };
-
 private:
 
-	pthread_t
-	get_thread_id() const
-	{ return rofbase_tid; };
-
-	static pthread_t
-	get_next_worker_tid();
-
-	static void
-	rofbase_init();
-
-	static void
-	rofbase_term();
-
-private:
-
-	/**< flag indicating rofl-common is initialized */
-	static bool                     rofbase_initialized;
-	/**< next crofbase instance is assigned to this worker */
-	static unsigned int             next_worker_id;
-	/**< number of rofl-common internal threads */
-	static unsigned int             workers_num;
-	/**< set of ids for active threads */
-	static std::vector<pthread_t>   workers;
-	/**< set of all active crofbase instances */
-	static std::set<crofbase*> 		rofbases;
-	/**< rwlock for rofbases */
-	static PthreadRwLock	        rofbases_rwlock;
-
-	/**< identifier assigned to this crofbase instance */
-	pthread_t                       rofbase_tid;
 	/**< set of active controller connections */
 	std::map<cctlid, crofctl*>		rofctls;
 	mutable PthreadRwLock           rofctls_rwlock;
