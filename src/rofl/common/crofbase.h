@@ -118,8 +118,7 @@ public:
 	 */
 	crofbase(
 			const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap =
-					rofl::openflow::cofhello_elem_versionbitmap(),
-					pthread_t tid = 0);
+					rofl::openflow::cofhello_elem_versionbitmap());
 
 	/**
 	 * @brief	crofbase destructor
@@ -143,10 +142,12 @@ public:
 	 */
 	void
 	close_dpt_listening() {
-		while (not dpt_sockets.empty()) {
-			unsigned int sockid = dpt_sockets.begin()->first;
-			drop_dpt_listening(sockid);
+		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
+		for (std::map<unsigned int, csocket*>::iterator
+				it = dpt_sockets.begin(); it != dpt_sockets.end(); ++it) {
+			delete it->second;
 		}
+		dpt_sockets.clear();
 	};
 
 	/**
@@ -161,6 +162,7 @@ public:
 			unsigned int sockid,
 			enum rofl::csocket::socket_type_t socket_type,
 			const rofl::cparams& params) {
+		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
 		if (dpt_sockets.find(sockid) != dpt_sockets.end()) {
 			delete dpt_sockets[sockid];
 			dpt_sockets.erase(sockid);
@@ -183,6 +185,7 @@ public:
 			unsigned int sockid,
 			enum rofl::csocket::socket_type_t socket_type,
 			const rofl::cparams& params) {
+		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
 		if (dpt_sockets.find(sockid) == dpt_sockets.end()) {
 			dpt_sockets[sockid] = csocket::csocket_factory(socket_type, this, get_thread_id());
 			dpt_sockets[sockid]->listen(params);
@@ -199,6 +202,7 @@ public:
 	const rofl::csocket&
 	get_dpt_listening(
 			unsigned int sockid) const {
+		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_READ);
 		if (dpt_sockets.find(sockid) == dpt_sockets.end()) {
 			throw eRofBaseNotFound();
 		}
@@ -213,6 +217,7 @@ public:
 	void
 	drop_dpt_listening(
 			unsigned int sockid) {
+		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
 		if (dpt_sockets.find(sockid) == dpt_sockets.end()) {
 			return;
 		}
@@ -228,6 +233,7 @@ public:
 	bool
 	has_dpt_listening(
 			unsigned int sockid) {
+		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_READ);
 		return (not (dpt_sockets.find(sockid) == dpt_sockets.end()));
 	};
 
@@ -246,10 +252,12 @@ public:
 	 */
 	void
 	close_ctl_listening() {
-		while (not ctl_sockets.empty()) {
-			unsigned int sockid = ctl_sockets.begin()->first;
-			drop_ctl_listening(sockid);
+		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
+		for (std::map<unsigned int, csocket*>::iterator
+				it = ctl_sockets.begin(); it != ctl_sockets.end(); ++it) {
+			delete it->second;
 		}
+		ctl_sockets.clear();
 	};
 
 	/**
@@ -264,6 +272,7 @@ public:
 			unsigned int sockid,
 			enum rofl::csocket::socket_type_t socket_type,
 			const rofl::cparams& params) {
+		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
 		if (ctl_sockets.find(sockid) != ctl_sockets.end()) {
 			delete ctl_sockets[sockid];
 			ctl_sockets.erase(sockid);
@@ -286,6 +295,7 @@ public:
 			unsigned int sockid,
 			enum rofl::csocket::socket_type_t socket_type,
 			const rofl::cparams& params) {
+		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
 		if (ctl_sockets.find(sockid) == ctl_sockets.end()) {
 			ctl_sockets[sockid] = csocket::csocket_factory(socket_type, this, get_thread_id());
 			ctl_sockets[sockid]->listen(params);
@@ -302,6 +312,7 @@ public:
 	const rofl::csocket&
 	get_ctl_listening(
 			unsigned int sockid) const {
+		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_READ);
 		if (ctl_sockets.find(sockid) == ctl_sockets.end()) {
 			throw eRofBaseNotFound();
 		}
@@ -316,6 +327,7 @@ public:
 	void
 	drop_ctl_listening(
 			unsigned int sockid) {
+		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
 		if (ctl_sockets.find(sockid) == ctl_sockets.end()) {
 			return;
 		}
@@ -331,6 +343,7 @@ public:
 	bool
 	has_ctl_listening(
 			unsigned int sockid) {
+		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_READ);
 		return (not (ctl_sockets.find(sockid) == ctl_sockets.end()));
 	};
 
@@ -365,6 +378,7 @@ public:
 	 */
 	void
 	drop_dpts() {
+		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
 		for (std::map<rofl::cdptid, crofdpt*>::iterator
 				it = rofdpts.begin(); it != rofdpts.end(); ++it) {
 			delete it->second;
@@ -397,6 +411,7 @@ public:
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap,
 		bool remove_on_channel_close = false,
 		const rofl::cdpid& dpid = rofl::cdpid(0)) {
+		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
 		if (rofdpts.find(dptid) != rofdpts.end()) {
 			delete rofdpts[dptid];
 			rofdpts.erase(dptid);
@@ -427,6 +442,7 @@ public:
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap,
 		bool remove_on_channel_close = false,
 		const rofl::cdpid& dpid = rofl::cdpid(0)) {
+		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
 		if (rofdpts.find(dptid) == rofdpts.end()) {
 			rofdpts[dptid] = new crofdpt(this, dptid, remove_on_channel_close, versionbitmap, dpid, get_thread_id());
 		}
@@ -446,6 +462,7 @@ public:
 	rofl::crofdpt&
 	set_dpt(
 			const rofl::cdptid& dptid) {
+		RwLock(rofdpts_rwlock, RwLock::RWLOCK_READ);
 		if (rofdpts.find(dptid) == rofdpts.end()) {
 			throw eRofBaseNotFound();
 		}
@@ -465,6 +482,7 @@ public:
 	const rofl::crofdpt&
 	get_dpt(
 			const rofl::cdptid& dptid) const {
+		RwLock(rofdpts_rwlock, RwLock::RWLOCK_READ);
 		if (rofdpts.find(dptid) == rofdpts.end()) {
 			throw eRofBaseNotFound();
 		}
@@ -479,6 +497,7 @@ public:
 	void
 	drop_dpt(
 		rofl::cdptid dptid) { // make a copy here, do not use a const reference
+		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
 		if (rofdpts.find(dptid) == rofdpts.end()) {
 			return;
 		}
@@ -495,6 +514,7 @@ public:
 	bool
 	has_dpt(
 		const rofl::cdptid& dptid) const {
+		RwLock(rofdpts_rwlock, RwLock::RWLOCK_READ);
 		return (not (rofdpts.find(dptid) == rofdpts.end()));
 	};
 
@@ -529,6 +549,7 @@ public:
 	 */
 	void
 	drop_ctls() {
+		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
 		for (std::map<rofl::cctlid, crofctl*>::iterator
 				it = rofctls.begin(); it != rofctls.end(); ++it) {
 			delete it->second;
@@ -559,6 +580,7 @@ public:
 		const rofl::cctlid& ctlid,
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap,
 		bool remove_on_channel_close = false) {
+		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
 		if (rofctls.find(ctlid) != rofctls.end()) {
 			delete rofctls[ctlid];
 			rofctls.erase(ctlid);
@@ -587,6 +609,7 @@ public:
 		const rofl::cctlid& ctlid,
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap,
 		bool remove_on_channel_close = false) {
+		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
 		if (rofctls.find(ctlid) == rofctls.end()) {
 			rofctls[ctlid] = new crofctl(this, ctlid, remove_on_channel_close, versionbitmap, get_thread_id());
 		}
@@ -606,6 +629,7 @@ public:
 	rofl::crofctl&
 	set_ctl(
 			const rofl::cctlid& ctlid) {
+		RwLock(rofctls_rwlock, RwLock::RWLOCK_READ);
 		if (rofctls.find(ctlid) == rofctls.end()) {
 			throw eRofBaseNotFound();
 		}
@@ -625,6 +649,7 @@ public:
 	const rofl::crofctl&
 	get_ctl(
 			const rofl::cctlid& ctlid) const {
+		RwLock(rofctls_rwlock, RwLock::RWLOCK_READ);
 		if (rofctls.find(ctlid) == rofctls.end()) {
 			throw eRofBaseNotFound();
 		}
@@ -639,6 +664,7 @@ public:
 	void
 	drop_ctl(
 		rofl::cctlid ctlid) { // make a copy here, do not use a const reference
+		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
 		if (rofctls.find(ctlid) == rofctls.end()) {
 			return;
 		}
@@ -655,6 +681,7 @@ public:
 	bool
 	has_ctl(
 		const rofl::cctlid& ctlid) const {
+		RwLock(rofctls_rwlock, RwLock::RWLOCK_READ);
 		return (not (rofctls.find(ctlid) == rofctls.end()));
 	};
 
@@ -2440,6 +2467,7 @@ private:
 	bool
 	is_dpt_listening(
 			csocket& socket) const {
+		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_READ);
 		for (std::map<unsigned int, csocket*>::const_iterator
 				it = dpt_sockets.begin(); it != dpt_sockets.end(); ++it) {
 			if (it->second == &socket) {
@@ -2452,6 +2480,7 @@ private:
 	bool
 	is_ctl_listening(
 			csocket& socket) const {
+		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_READ);
 		for (std::map<unsigned int, csocket*>::const_iterator
 				it = ctl_sockets.begin(); it != ctl_sockets.end(); ++it) {
 			if (it->second == &socket) {
@@ -2515,21 +2544,62 @@ private:
 		handle_ctl_close(ctlid);
 	};
 
+protected:
+
+	/**
+	 * @brief	Set number of running running threads for rofl-common.
+	 */
+	static void
+	set_num_of_workers(
+			unsigned int n)
+	{ workers_num = n; };
+
 private:
 
+	pthread_t
+	get_thread_id() const
+	{ return rofbase_tid; };
+
+	static pthread_t
+	get_next_worker_tid();
+
+	static void
+	rofbase_init();
+
+	static void
+	rofbase_term();
+
+private:
+
+	/**< flag indicating rofl-common is initialized */
+	static bool                     rofbase_initialized;
+	/**< next crofbase instance is assigned to this worker */
+	static unsigned int             next_worker_id;
+	/**< number of rofl-common internal threads */
+	static unsigned int             workers_num;
+	/**< set of ids for active threads */
+	static std::vector<pthread_t>   workers;
 	/**< set of all active crofbase instances */
 	static std::set<crofbase*> 		rofbases;
+	/**< rwlock for rofbases */
+	static PthreadRwLock	        rofbases_rwlock;
 
+	/**< identifier assigned to this crofbase instance */
+	pthread_t                       rofbase_tid;
 	/**< set of active controller connections */
 	std::map<cctlid, crofctl*>		rofctls;
+	mutable PthreadRwLock           rofctls_rwlock;
 	/**< set of active data path connections */
 	std::map<cdptid, crofdpt*>		rofdpts;
+	mutable PthreadRwLock           rofdpts_rwlock;
 	/**< listening sockets for incoming connections from datapath elements */
 	std::map<unsigned int, csocket*>
 									dpt_sockets;
+	mutable PthreadRwLock           dpt_sockets_rwlock;
 	/**< listening sockets for incoming connections from controller entities */
 	std::map<unsigned int, csocket*>
 									ctl_sockets;
+	mutable PthreadRwLock           ctl_sockets_rwlock;
 	// supported OpenFlow versions
 	rofl::openflow::cofhello_elem_versionbitmap
 									versionbitmap;
