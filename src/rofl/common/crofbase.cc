@@ -2,18 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-
-
 #include "crofbase.h"
 
 using namespace rofl;
 
-
-
 crofbase::crofbase(
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap) :
 				versionbitmap(versionbitmap),
-				transactions(this, get_thread_id()),
+				transactions(this, crofcore::get_worker_thread_id()),
 				generation_is_defined(false),
 				cached_generation_id((uint64_t)((int64_t)-1))
 {}

@@ -12,18 +12,7 @@
 #ifndef CROFCORE_H
 #define CROFCORE_H 1
 
-#include <map>
-#include <set>
-#include <list>
 #include <vector>
-#include <bitset>
-#include <algorithm>
-#include <endian.h>
-#include <string.h>
-#include <time.h>
-#ifndef htobe16
-	#include "endian_conversion.h"
-#endif
 
 #include "rofl/common/ciosrv.h"
 #include "rofl/common/thread_helper.h"
@@ -38,20 +27,16 @@ public:
 	 *
 	 */
 	crofcore() :
-		rofcore_tid(crofcore::get_next_worker_tid()) {
-		RwLock(rofcores_rwlock, RwLock::RWLOCK_WRITE);
-		crofcore::rofcores.insert(this);
-	};
+		rofcore_tid(crofcore::get_next_worker_tid())
+	{};
 
 	/**
 	 * @brief	crofcore destructor
 	 *
 	 */
 	virtual
-	~crofcore() {
-		RwLock(rofcores_rwlock, RwLock::RWLOCK_WRITE);
-		crofcore::rofcores.erase(this);
-	};
+	~crofcore()
+	{};
 
 public:
 
@@ -61,14 +46,14 @@ public:
 	static void
 	set_num_of_workers(
 			unsigned int n)
-	{ workers_num = n; };
+	{ initialize(n); };
 
 	/**
 	 *
 	 */
 	static void
 	cleanup_on_exit()
-	{ rofcore_term(); };
+	{ terminate(); };
 
 protected:
 
@@ -82,23 +67,22 @@ private:
 	get_next_worker_tid();
 
 	static void
-	rofcore_init();
+	initialize(
+			unsigned int workers_num);
 
 	static void
-	rofcore_term();
+	terminate();
 
 private:
 
 	/**< flag indicating rofl-common is initialized */
-	static bool                     rofcore_initialized;
+	static bool                     initialized;
 	/**< next crofcore instance is assigned to this worker */
 	static unsigned int             next_worker_id;
 	/**< number of rofl-common internal threads */
 	static unsigned int             workers_num;
 	/**< set of ids for active threads */
 	static std::vector<pthread_t>   workers;
-	/**< set of all active crofcore instances */
-	static std::set<crofcore*> 		rofcores;
 	/**< rwlock for rofcores */
 	static PthreadRwLock	        rofcores_rwlock;
 
