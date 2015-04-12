@@ -17,6 +17,7 @@ using namespace rofl;
 bool
 crofchan::is_established() const
 {
+	RwLock(conns_rwlock, RwLock::RWLOCK_READ);
 	if (conns.empty())
 		return false;
 	// this channel is up, when its main connection is up
@@ -28,11 +29,12 @@ crofchan::is_established() const
 void
 crofchan::close()
 {
-	while (not conns.empty()) {
-		std::map<cauxid, crofconn*>::reverse_iterator it = conns.rbegin();
+	RwLock(conns_rwlock, RwLock::RWLOCK_WRITE);
+	for (std::map<cauxid, crofconn*>::reverse_iterator
+			it = conns.rbegin(); it != conns.rend(); ++it) {
 		delete it->second;
-		conns.erase(it->first);
 	}
+	conns.clear();
 }
 
 
@@ -40,6 +42,7 @@ crofchan::close()
 cauxid
 crofchan::get_next_auxid()
 {
+	RwLock(conns_rwlock, RwLock::RWLOCK_READ);
 	uint8_t aux_id = 0;
 	while (conns.find(aux_id) != conns.end()) {
 		aux_id++;
@@ -55,6 +58,8 @@ crofchan::get_next_auxid()
 std::list<cauxid>
 crofchan::get_conn_index() const
 {
+	RwLock(conns_rwlock, RwLock::RWLOCK_READ);
+
 	std::list<cauxid> connections;
 	for (std::map<cauxid, crofconn*>::const_iterator
 			it = conns.begin(); it != conns.end(); ++it) {
@@ -65,6 +70,236 @@ crofchan::get_conn_index() const
 
 
 
+crofconn&
+crofchan::add_conn(
+		const cauxid& __auxid,
+		enum rofl::csocket::socket_type_t socket_type,
+		const cparams& socket_params)
+{
+	rofl::openflow::cofhello_elem_versionbitmap vbitmap;
+	cauxid auxid(__auxid);
+
+	// get lock on conns map
+	RwLock(conns_rwlock, RwLock::RWLOCK_WRITE);
+
+	// in OFP10 and OFP12, there is only a single main connection
+	if ((ofp_version > rofl::openflow::OFP_VERSION_UNKNOWN) &&
+		(ofp_version < rofl::openflow13::OFP_VERSION)) {
+			auxid = cauxid(0);
+	}
+
+	/* main connection (affects all auxiliary connections as well) */
+	if (cauxid(0) == auxid) {
+
+		rofl::logging::debug << "[rofl-common][crofchan] "
+				<< "adding main connection, auxid: " << auxid.str() << std::endl;
+
+		// main connection: propose all OFP versions defined for our side
+		vbitmap = versionbitmap;
+
+		// close main and all auxiliary connections
+		if (not conns.empty()) {
+			for (std::map<cauxid, crofconn*>::iterator
+					it = conns.begin(); it != conns.end(); ++it) {
+				delete it->second;
+			}
+			conns.clear();
+		}
+
+		// create new main connection
+		conns[auxid] = new crofconn(this, vbitmap, get_thread_id());
+		conns[auxid]->connect(auxid, socket_type, socket_params);
+
+		return *(conns[auxid]);
+
+
+
+
+	/* auxiliary connections */
+	} else {
+
+		rofl::logging::debug << "[rofl-common][crofchan] "
+				<< "adding auxiliary connection, auxid: " << auxid.str() << std::endl;
+
+		// auxiliary connections: use OFP version negotiated for main connection
+		vbitmap.add_ofp_version(ofp_version);
+
+		// set auxid to 0 (main), when no main connection exists
+		if (conns.find(cauxid(0)) == conns.end()) {
+			auxid = cauxid(0);
+		}
+
+		// remove existing auxiliary connection
+		if (conns.find(auxid) != conns.end()) {
+			delete conns[auxid];
+		}
+
+		conns[auxid] = new crofconn(this, vbitmap, get_thread_id());
+		conns[auxid]->connect(auxid, socket_type, socket_params);
+
+		return *(conns[auxid]);
+	}
+}
+
+
+
+crofconn&
+crofchan::add_conn(
+		const cauxid& __auxid,
+		crofconn* conn)
+{
+	rofl::cauxid auxid(__auxid);
+
+	if (NULL == conn)
+		throw eRofChanInval("crofconn::add_conn() no valid connection");
+
+	// get lock on conns map
+	RwLock(conns_rwlock, RwLock::RWLOCK_WRITE);
+
+	// in OFP10 and OFP12, there is only a single main connection
+	if ((ofp_version > rofl::openflow::OFP_VERSION_UNKNOWN) &&
+		(ofp_version < rofl::openflow13::OFP_VERSION)) {
+			auxid = cauxid(0);
+	}
+
+	/* main connection (affects all auxiliary connections as well) */
+	if (cauxid(0) == auxid) {
+
+		rofl::logging::debug << "[rofl-common][crofchan] "
+				<< "adding main connection, auxid: " << auxid.str() << std::endl;
+
+		// close main and all auxiliary connections
+		if (not conns.empty()) {
+			for (std::map<cauxid, crofconn*>::iterator
+					it = conns.begin(); it != conns.end(); ++it) {
+				delete it->second;
+			}
+			conns.clear();
+		}
+		this->ofp_version = conn->get_version();
+
+		// create new main connection
+		conns[auxid] = conn;
+		conns[auxid]->set_env(this);
+
+		handle_connected(*conns[auxid], conns[auxid]->get_version());
+
+		return *(conns[auxid]);
+
+
+
+
+	/* auxiliary connections */
+	} else {
+
+		rofl::logging::debug << "[rofl-common][crofchan] "
+				<< "adding auxiliary connection, auxid: " << auxid.str() << std::endl;
+
+		// set auxid to 0 (main), when no main connection exists
+		if (conns.find(cauxid(0)) == conns.end()) {
+			auxid = cauxid(0);
+			this->ofp_version = conn->get_version();
+		}
+
+		// remove existing auxiliary connection
+		if (conns.find(auxid) != conns.end()) {
+			delete conns[auxid];
+		}
+
+		conns[auxid] = conn;
+		conns[auxid]->set_env(this);
+
+		handle_connected(*conns[auxid], conns[auxid]->get_version());
+
+		return *(conns[auxid]);
+	}
+}
+
+
+
+crofconn&
+crofchan::set_conn(
+		const cauxid& __auxid)
+{
+	rofl::openflow::cofhello_elem_versionbitmap vbitmap;
+	cauxid auxid(__auxid);
+
+	// get lock on conns map
+	RwLock(conns_rwlock, RwLock::RWLOCK_READ);
+
+	// in OFP10 and OFP12, there is only a single main connection
+	if ((ofp_version > rofl::openflow::OFP_VERSION_UNKNOWN) &&
+		(ofp_version < rofl::openflow13::OFP_VERSION)) {
+			auxid = cauxid(0);
+	}
+
+	if (conns.find(auxid) == conns.end()) {
+		throw eRofChanNotFound("crofconn::set_conn() auxid not found");
+	}
+
+	return *(conns[auxid]);
+}
+
+
+
+const crofconn&
+crofchan::get_conn(
+		const cauxid& aux_id) const
+{
+	RwLock(conns_rwlock, RwLock::RWLOCK_READ);
+	if (conns.find(aux_id) == conns.end()) {
+		throw eRofChanNotFound("crofchan::get_conn()");
+	}
+	return const_cast<const crofconn&>(*(conns.at(aux_id)));
+}
+
+
+
+void
+crofchan::drop_conn(
+		const cauxid& auxid)
+{
+	RwLock(conns_rwlock, RwLock::RWLOCK_WRITE);
+
+	if (conns.find(auxid) == conns.end()) {
+		return;
+	}
+
+	// main connection: close main and all auxiliary connections
+	if (rofl::cauxid(0) == auxid) {
+		rofl::logging::debug << "[rofl-common][crofchan][drop_conn] "
+				<< "dropping main connection and all auxiliary connections. " << str() << std::endl;
+
+		for (std::map<cauxid, crofconn*>::reverse_iterator
+				it = conns.rbegin(); it != conns.rend(); ++it) {
+			delete it->second;
+		}
+		conns.clear();
+
+	// auxiliary connection
+	} else {
+		rofl::logging::debug << "[rofl-common][crofchan][drop_conn] "
+				<< "dropping auxiliary connection, auxid: " << auxid.str() << " " << str() << std::endl;
+
+		delete conns[auxid];
+		conns.erase(auxid);
+	}
+}
+
+
+
+bool
+crofchan::has_conn(
+		const cauxid& aux_id) const
+{
+	RwLock(conns_rwlock, RwLock::RWLOCK_READ);
+	return (not (conns.find(aux_id) == conns.end()));
+}
+
+
+
+
+#if 0
 crofconn&
 crofchan::add_conn(
 		const cauxid& auxid,
@@ -164,7 +399,7 @@ crofchan::set_conn(
 		rofl::logging::error << "[rofl-common][crofchan][set_conn] "
 				<< "first connection must have aux-id:0, found " << auxid
 				<< " instead. " << str() << std::endl;
-		throw eRofChanInval();
+		throw eRofChanInval("crofchan::set_conn()");
 	}
 
 #if 0
@@ -190,18 +425,6 @@ crofchan::set_conn(
 				<< "added connection, auxid: " << auxid << " " << str() << std::endl;
 	}
 	return *(conns[auxid]);
-}
-
-
-
-crofconn const&
-crofchan::get_conn(
-		const cauxid& aux_id) const
-{
-	if (conns.find(aux_id) == conns.end()) {
-		throw eRofChanNotFound();
-	}
-	return *const_cast<crofconn const*>(conns.at(aux_id));
 }
 
 
@@ -240,7 +463,7 @@ crofchan::has_conn(
 {
 	return (not (conns.find(aux_id) == conns.end()));
 }
-
+#endif
 
 
 
@@ -249,14 +472,16 @@ crofchan::send_message(
 		const cauxid& aux_id,
 		rofl::openflow::cofmsg *msg)
 {
+	RwLock(conns_rwlock, RwLock::RWLOCK_READ);
+
 	if (conns.find(aux_id) == conns.end()) {
 		rofl::logging::error << "[rofl-common][crofchan] sending message failed for aux-id:" << aux_id << " not found." << std::endl << *this;
-		throw eRofChanNotFound(); // throw exception, when this connection does not exist
+		throw eRofChanNotFound("crofchan::send_message()"); // throw exception, when this connection does not exist
 	}
 
 	if (not conns[aux_id]->is_established()) {
 		rofl::logging::error << "[rofl-common][crofchan] connection for aux-id:" << aux_id << " not established." << std::endl << *this;
-		throw eRofChanNotConnected();
+		throw eRofChanNotConnected("crofchan::send_message()");
 	}
 
 	unsigned int cwnd_size = 0;
@@ -269,6 +494,7 @@ crofchan::send_message(
 
 	return cwnd_size;
 }
+
 
 
 void

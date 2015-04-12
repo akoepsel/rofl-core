@@ -23,11 +23,26 @@
 
 namespace rofl {
 
-class eRofChanBase			: public RoflException {};
-class eRofChanNotFound		: public eRofChanBase {};
-class eRofChanExists		: public eRofChanBase {};
-class eRofChanInval			: public eRofChanBase {};
-class eRofChanNotConnected	: public eRofChanBase {};
+class eRofChanBase			: public RoflException {
+public:
+	eRofChanBase(const std::string& __arg) : RoflException(__arg) {};
+};
+class eRofChanNotFound		: public eRofChanBase {
+public:
+	eRofChanNotFound(const std::string& __arg) : eRofChanBase(__arg) {};
+};
+class eRofChanExists		: public eRofChanBase {
+public:
+	eRofChanExists(const std::string& __arg) : eRofChanBase(__arg) {};
+};
+class eRofChanInval			: public eRofChanBase {
+public:
+	eRofChanInval(const std::string& __arg) : eRofChanBase(__arg) {};
+};
+class eRofChanNotConnected	: public eRofChanBase {
+public:
+	eRofChanNotConnected(const std::string& __arg) : eRofChanBase(__arg) {};
+};
 
 class crofchan; // forward declaration
 
@@ -201,9 +216,8 @@ public:
 	 *
 	 */
 	virtual
-	~crofchan() {
-		close();
-	};
+	~crofchan()
+	{ close(); };
 
 public:
 
@@ -503,7 +517,7 @@ private:
 	crofchan_env&
 	call_env() {
 		if (crofchan_env::rofchan_envs.find(env) == crofchan_env::rofchan_envs.end()) {
-			throw eRofChanNotFound();
+			throw eRofChanNotFound("crofchan::call_env() environment not found");
 		}
 		return *env;
 	};
@@ -550,6 +564,8 @@ private:
 	crofchan_env*						env;
 	// main and auxiliary connections
 	std::map<cauxid, crofconn*>			conns;
+	// connections set rwlock
+	mutable PthreadRwLock				conns_rwlock;
 	// supported OFP versions
 	rofl::openflow::cofhello_elem_versionbitmap
 										versionbitmap;
