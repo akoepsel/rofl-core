@@ -40,6 +40,13 @@ public:
 
 public:
 
+	static void
+	initialize(
+			unsigned int workers_num = 1);
+
+	static void
+	terminate();
+
 	/**
 	 * @brief	Set number of running running threads for rofl-common.
 	 */
@@ -65,13 +72,6 @@ private:
 
 	static pthread_t
 	get_next_worker_tid();
-
-	static void
-	initialize(
-			unsigned int workers_num);
-
-	static void
-	terminate();
 
 private:
 
