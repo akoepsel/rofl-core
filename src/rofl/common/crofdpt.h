@@ -2400,51 +2400,44 @@ private:
 	static std::map<rofl::cdptid, crofdpt*> rofdpts;
 
 	// environment
-	rofl::crofdpt_env*      env;
+	rofl::crofdpt_env*               env;
 	// handle for this crofdpt instance
-	rofl::cdptid            dptid;
+	rofl::cdptid                     dptid;
 	// OFP control channel
-	rofl::crofchan          rofchan;
+	rofl::crofchan                   rofchan;
 	// pending OFP transactions
-	rofl::ctransactions     transactions;
-
-	bool                    remove_on_channel_close;
+	rofl::ctransactions              transactions;
+	bool                             remove_on_channel_close;
 	// allocated groupids on datapath
-	std::set<uint32_t>      groupids;
-
+	std::set<uint32_t>               groupids;
 	// datapath identifier
-	rofl::cdpid             dpid;
+	rofl::cdpid                      dpid;
 	// datapath hardware address
-	rofl::caddress_ll       hwaddr;
+	rofl::caddress_ll                hwaddr;
 	// number of buffer lines
-	uint32_t                n_buffers;
+	uint32_t                         n_buffers;
 	// number of tables
-	uint8_t                 n_tables;
+	uint8_t                          n_tables;
 	// capabilities field
-	uint32_t                capabilities;
+	uint32_t                         capabilities;
 	// list of tables
-	rofl::openflow::coftables tables;
+	rofl::openflow::coftables        tables;
 	// list of ports
-	rofl::openflow::cofports ports;
-	uint16_t                config;
-	uint16_t                miss_send_len;
-
-	unsigned int            state;
-	std::deque<enum crofdpt_event_t>
-                            events;
-
-	PthreadRwLock           conns_terminated_rwlock;
-	std::list<rofl::cauxid> conns_terminated;
-	PthreadRwLock           conns_refused_rwlock;
-	std::list<rofl::cauxid> conns_refused;
-	PthreadRwLock           conns_failed_rwlock;
-	std::list<rofl::cauxid> conns_failed;
-
-	std::bitset<32>         flags;
+	rofl::openflow::cofports         ports;
+	uint16_t                         config;
+	uint16_t                         miss_send_len;
+	unsigned int                     state;
+	std::deque<enum crofdpt_event_t> events;
+	PthreadRwLock                    conns_terminated_rwlock;
+	std::list<rofl::cauxid>          conns_terminated;
+	PthreadRwLock                    conns_refused_rwlock;
+	std::list<rofl::cauxid>          conns_refused;
+	PthreadRwLock                    conns_failed_rwlock;
+	std::list<rofl::cauxid>          conns_failed;
+	std::bitset<32>                  flags;
 	// delay queue, used for storing asynchronous messages during connection setup
-	rofl::crofqueue         dlqueue;
-
-	static const time_t     DEFAULT_REQUEST_TIMEOUT = 5; // seconds
+	rofl::crofqueue                  dlqueue;
+	static const time_t              DEFAULT_REQUEST_TIMEOUT = 5; // seconds
 };
 
 }; // end of namespace
