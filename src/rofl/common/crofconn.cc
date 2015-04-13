@@ -145,9 +145,26 @@ crofconn::connect(
 void
 crofconn::close()
 {
-
+#if 0
 	flags.set(FLAGS_LOCAL_DISCONNECT);
 	run_engine(EVENT_DISCONNECTED);
+#endif
+
+	flags.set(FLAGS_LOCAL_DISCONNECT);
+	while (not timer_ids.empty()) {
+		timer_stop(timer_ids.begin()->first);
+	}
+
+	// remove all pending packets from rxqueues
+	for (std::vector<crofqueue>::iterator
+			it = rxqueues.begin(); it != rxqueues.end(); ++it) {
+		(*it).clear();
+	}
+
+	// purge delay queue
+	dlqueue.clear();
+
+	rofsock->close();
 }
 
 

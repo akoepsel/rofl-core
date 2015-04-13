@@ -131,6 +131,23 @@ public:
 	virtual
 	~crofbase();
 
+private:
+
+	/**
+	 *
+	 */
+	crofbase(
+			const crofbase& base) :
+				transactions(this)
+	{ *this = base; };
+
+	/**
+	 *
+	 */
+	crofbase&
+	operator= (
+			const crofbase& base);
+
 public:
 
 	/**
