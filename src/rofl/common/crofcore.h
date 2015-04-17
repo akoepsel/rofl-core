@@ -26,26 +26,29 @@ public:
 	 * @brief	crofcore constructor
 	 *
 	 */
-	crofcore() :
-		rofcore_tid(crofcore::get_next_worker_tid())
-	{};
+	crofcore() {
+		RwLock(rofcores_rwlock, RwLock::RWLOCK_WRITE);
+		if (crofcore::rofcores.empty()) {
+			crofcore::initialize();
+		}
+		crofcore::rofcores.insert(this);
+		rofcore_tid = crofcore::get_next_worker_tid();
+	};
 
 	/**
 	 * @brief	crofcore destructor
 	 *
 	 */
 	virtual
-	~crofcore()
-	{};
+	~crofcore() {
+		RwLock(rofcores_rwlock, RwLock::RWLOCK_WRITE);
+		crofcore::rofcores.erase(this);
+		if (crofcore::rofcores.empty()) {
+			crofcore::terminate();
+		}
+	};
 
 public:
-
-	static void
-	initialize(
-			unsigned int workers_num = 1);
-
-	static void
-	terminate();
 
 	/**
 	 * @brief	Set number of running running threads for rofl-common.
@@ -55,13 +58,6 @@ public:
 			unsigned int n)
 	{ initialize(n); };
 
-	/**
-	 *
-	 */
-	static void
-	cleanup_on_exit()
-	{ terminate(); };
-
 protected:
 
 	pthread_t
@@ -70,21 +66,30 @@ protected:
 
 private:
 
+	static void
+	initialize(
+			unsigned int workers_num = 1);
+
+	static void
+	terminate();
+
 	static pthread_t
 	get_next_worker_tid();
 
 private:
 
+	/**< set of active crofcore instances */
+	static std::set<crofcore*>		rofcores;
+	/**< rwlock for rofcores */
+	static PthreadRwLock	        rofcores_rwlock;
 	/**< flag indicating rofl-common is initialized */
 	static bool                     initialized;
 	/**< next crofcore instance is assigned to this worker */
 	static unsigned int             next_worker_id;
-	/**< number of rofl-common internal threads */
-	static unsigned int             workers_num;
 	/**< set of ids for active threads */
 	static std::vector<pthread_t>   workers;
-	/**< rwlock for rofcores */
-	static PthreadRwLock	        rofcores_rwlock;
+	/**< rwlock for workers */
+	static PthreadRwLock	        workers_rwlock;
 
 	/**< identifier assigned to this crofcore instance */
 	pthread_t                       rofcore_tid;

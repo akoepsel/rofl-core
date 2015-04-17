@@ -6,18 +6,18 @@
 
 using namespace rofl;
 
+/*static*/std::set<crofcore*>	 crofcore::rofcores;
+/*static*/PthreadRwLock          crofcore::rofcores_rwlock;
 /*static*/bool                   crofcore::initialized = false;
 /*static*/unsigned int           crofcore::next_worker_id = 0;
-/*static*/unsigned int           crofcore::workers_num = 1;
 /*static*/std::vector<pthread_t> crofcore::workers;
-/*static*/PthreadRwLock          crofcore::rofcores_rwlock;
+/*static*/PthreadRwLock          crofcore::workers_rwlock;
 
 /*static*/
 pthread_t
 crofcore::get_next_worker_tid()
 {
-	crofcore::initialize(crofcore::workers_num);
-	RwLock(rofcores_rwlock, RwLock::RWLOCK_READ);
+	RwLock(workers_rwlock, RwLock::RWLOCK_READ);
 	next_worker_id =
 			(next_worker_id == (workers.size() - 1)) ?
 					0 : next_worker_id + 1;
@@ -30,17 +30,19 @@ void
 crofcore::initialize(
 		unsigned int workers_num)
 {
-	RwLock(rofcores_rwlock, RwLock::RWLOCK_WRITE);
+	workers_num = (0 == workers_num) ? 1 : workers_num;
 
-	crofcore::workers_num = workers_num;
+	RwLock(workers_rwlock, RwLock::RWLOCK_WRITE);
 
-	if (crofcore::initialized) {
+	if (crofcore::initialized && (workers_num < workers.size())) {
 		return;
 	}
 
-	for (unsigned int i = 0; i < workers_num; i++) {
+	unsigned int old_workers_num = workers.size();
+	for (unsigned int i = old_workers_num; i < workers_num; i++) {
 		workers.push_back(cioloop::add_thread());
 	}
+	next_worker_id = old_workers_num;
 	crofcore::initialized = true;
 }
 
@@ -50,7 +52,7 @@ crofcore::initialize(
 void
 crofcore::terminate()
 {
-	RwLock(rofcores_rwlock, RwLock::RWLOCK_WRITE);
+	RwLock(workers_rwlock, RwLock::RWLOCK_WRITE);
 
 	if (not crofcore::initialized) {
 		return;
