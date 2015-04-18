@@ -18,21 +18,131 @@ crofbase::crofbase(
 
 crofbase::~crofbase()
 {
-	try {
-		// close the listening sockets
-		close_dpt_listening();
-		close_ctl_listening();
+	// close the listening sockets
+	close_dpt_listening();
+	close_ctl_listening();
 
-		// detach from higher layer entities
-		while (not rofctls.empty()) {
-			drop_ctl(rofctls.begin()->first);
+	// detach from higher layer entities
+	{
+		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
+		for (std::map<cdptid, crofdpt*>::iterator
+				it = rofdpts.begin(); it != rofdpts.end(); ++it) {
+			delete it->second;
 		}
+		rofdpts.clear();
+	}
 
-		while (not rofdpts.empty()) {
-			drop_dpt(rofdpts.begin()->first);
+	{
+		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
+		for (std::map<cctlid, crofctl*>::iterator
+				it = rofctls.begin(); it != rofctls.end(); ++it) {
+			delete it->second;
 		}
+		rofctls.clear();
+	}
 
-	} catch (RoflException& e) {}
+	{
+		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
+		ctls_chan_established.clear();
+		ctls_chan_terminated.clear();
+		dpts_chan_established.clear();
+		dpts_chan_terminated.clear();
+	}
+
+	events.clear();
+}
+
+
+
+void
+crofbase::handle_event(
+		const cevent& event)
+{
+	switch (event.get_cmd()) {
+	case EVENT_CHAN_ESTABLISHED: {
+		work_on_eventqueue(EVENT_CHAN_ESTABLISHED);
+	} break;
+	case EVENT_CHAN_TERMINATED: {
+		work_on_eventqueue(EVENT_CHAN_TERMINATED);
+	} break;
+	default: {
+
+	};
+	}
+}
+
+
+
+void
+crofbase::work_on_eventqueue(
+		enum crofbase_event_t event)
+{
+	if (EVENT_NONE != event) {
+		events.push_back(event);
+	}
+
+	while (not events.empty()) {
+		enum crofbase_event_t event = events.front();
+		events.pop_front();
+
+		switch (event) {
+		case EVENT_CHAN_ESTABLISHED: {
+			event_chan_established();
+		} break;
+		case EVENT_CHAN_TERMINATED: {
+			event_chan_terminated();
+		} break;
+		default: {
+			// ignore yet unknown events
+		};
+		}
+	}
+}
+
+
+
+void
+crofbase::event_chan_established()
+{
+	RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
+
+	for (std::deque<cctlid>::iterator
+			it = ctls_chan_established.begin(); it != ctls_chan_established.end(); ++it) {
+		handle_ctl_open(rofl::crofctl::get_ctl(*it));
+	}
+	ctls_chan_established.clear();
+
+	for (std::deque<cdptid>::iterator
+			it = dpts_chan_established.begin(); it != dpts_chan_established.end(); ++it) {
+		handle_dpt_open(rofl::crofdpt::get_dpt(*it));
+	}
+	dpts_chan_established.clear();
+}
+
+
+
+void
+crofbase::event_chan_terminated()
+{
+	RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
+
+	for (std::deque<cctlid>::iterator
+			it = ctls_chan_terminated.begin(); it != ctls_chan_terminated.end(); ++it) {
+		if (rofl::crofctl::get_ctl(*it).remove_on_channel_termination()) {
+			drop_ctl(*it);
+		}
+		handle_ctl_close(*it);
+	}
+	ctls_chan_terminated.clear();
+
+	for (std::deque<cdptid>::iterator
+			it = dpts_chan_terminated.begin(); it != dpts_chan_terminated.end(); ++it) {
+		if (rofl::crofdpt::get_dpt(*it).remove_on_channel_termination()) {
+			drop_dpt(*it);
+		}
+		handle_dpt_close(*it);
+	}
+	dpts_chan_terminated.clear();
 }
 
 

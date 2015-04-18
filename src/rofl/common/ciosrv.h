@@ -123,10 +123,22 @@ public:
 		if (cioloop::get_loop(tid).has_active_elements()) {
 			throw eRofIoLoopBusy("loop has still active elements");
 		}
+		logging::debug << "[rofl-common][cioloop][thread] calling stop, tid: 0x"
+				<< std::hex << tid << std::dec << std::endl;
+
 		cioloop::get_loop(tid).stop();
+		logging::debug << "[rofl-common][cioloop][thread] joining thread, tid: 0x"
+				<< std::hex << tid << std::dec << std::endl;
+
 		if ((rc = pthread_join(tid, NULL)) < 0) {
+			logging::debug << "[rofl-common][cioloop][thread] cancelling thread, tid: 0x"
+					<< std::hex << tid << std::dec << std::endl;
+
 			pthread_cancel(tid);
 		}
+		logging::debug << "[rofl-common][cioloop][thread] thread terminated, dropping loop, tid: 0x"
+				<< std::hex << tid << std::dec << std::endl;
+
 		cioloop::threads.erase(tid);
 		cioloop::drop_loop(tid);
 	};
@@ -184,7 +196,8 @@ public:
 	 *
 	 */
 	static bool
-	has_loop(pthread_t tid) {
+	has_loop(pthread_t tid = 0) {
+		if (tid == 0) tid = pthread_self();
 		RwLock lock(rofl::cioloop::loops_rwlock, RwLock::RWLOCK_READ);
 		return (not (cioloop::loops.find(tid) == cioloop::loops.end()));
 	};
@@ -223,6 +236,22 @@ public:
 		}
 		cioloop::drop_loop(pthread_self());
 		cioloop::loops.clear();
+	};
+
+	/**
+	 * @brief	Dump state of all cioloop instances to output operator
+	 */
+	static std::ostream&
+	show_all_cioloops(std::ostream& os) {
+		RwLock(cioloop::threads_lock, RwLock::RWLOCK_READ);
+		os << "<cioloop instances: " << std::endl;
+		rofl::indent(2);
+		for (std::map<pthread_t, int>::iterator
+				it = cioloop::threads.begin(); it != cioloop::threads.end(); ++it) {
+			os << rofl::cioloop::get_loop(it->first);
+		}
+		return os;
+		os << ">";
 	};
 
 public:
@@ -657,8 +686,16 @@ public:
 	friend std::ostream&
 	operator<< (std::ostream& os, cioloop const& ioloop) {
 		os << indent(0) << "<cioloop tid:0x"
-				<< std::hex << ioloop.get_tid() << std::dec << ">" << std::endl;
-
+				<< std::hex << ioloop.get_tid() << std::dec << " >" << std::endl;
+		{
+			RwLock(ioloop.ciolist_rwlock, RwLock::RWLOCK_READ);
+			os << indent(2) << "<ciosrv instances: ";
+			for (std::set<ciosrv*>::const_iterator
+					it = ioloop.ciolist.begin(); it != ioloop.ciolist.end(); ++it) {
+				os << std::hex << *it << std::dec << " ";
+			}
+			os << ">" << std::endl;
+		}
 		{
 			RwLock lock(ioloop.poll_rwlock, RwLock::RWLOCK_READ);
 			os << indent(2) << "<instances with rfds: ";
@@ -854,6 +891,16 @@ public:
 	 */
 	void
 	notify(const cevent& event) {
+		if (not rofl::cioloop::has_loop(get_thread_id()))
+			return;
+		std::cerr << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX this:"
+					<< std::hex << (long)this << std::dec << std::endl;
+			std::cerr << rofl::cioloop::show_all_cioloops(std::cerr) << std::endl;
+			std::cerr << rofl::cioloop(get_thread_id()) << std::endl;
+#if 0
+		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+			return;
+#endif
 		events.add_event(event);
 		rofl::cioloop::get_loop(get_thread_id()).has_event(this);
 	};
@@ -957,6 +1004,10 @@ protected:
 	 */
 	void
 	register_filedesc_r(int fd) {
+#if 0
+		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+			return;
+#endif
 		RwLock lock(rfds_rwlock, RwLock::RWLOCK_WRITE);
 		rfds.insert(fd);
 		rofl::cioloop::get_loop(get_thread_id()).add_readfd(this, fd);
@@ -969,6 +1020,10 @@ protected:
 	 */
 	void
 	deregister_filedesc_r(int fd) {
+#if 0
+		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+			return;
+#endif
 		RwLock lock(rfds_rwlock, RwLock::RWLOCK_WRITE);
 		rfds.erase(fd);
 		rofl::cioloop::get_loop(get_thread_id()).drop_readfd(this, fd);
@@ -983,6 +1038,10 @@ protected:
 	 */
 	void
 	register_filedesc_w(int fd) {
+#if 0
+		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+			return;
+#endif
 		RwLock lock(wfds_rwlock, RwLock::RWLOCK_WRITE);
 		wfds.insert(fd);
 		rofl::cioloop::get_loop(get_thread_id()).add_writefd(this, fd);
@@ -995,6 +1054,10 @@ protected:
 	 */
 	void
 	deregister_filedesc_w(int fd) {
+#if 0
+		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+			return;
+#endif
 		RwLock lock(wfds_rwlock, RwLock::RWLOCK_WRITE);
 		wfds.erase(fd);
 		rofl::cioloop::get_loop(get_thread_id()).drop_writefd(this, fd);
@@ -1007,9 +1070,16 @@ protected:
 	/**
 	 *
 	 */
+	cevent
+	get_next_event()
+	{ return events.get_event(); };
+
+	/**
+	 * @brief	Only called from within main loop, use pthread_self() here
+	 */
 	bool
 	has_next_event() const
-	{ return (not events.empty()); };
+	{ return (cioloop::has_loop() && cioloop::get_loop().has_ciosrv(const_cast<ciosrv*>(this)) && (not events.empty())); };
 
 	/**
 	 *
@@ -1019,11 +1089,11 @@ protected:
 	{ return timers.get_next_timer(); };
 
 	/**
-	 *
+	 * @brief	Only called from within main loop, use pthread_self() here
 	 */
 	bool
 	has_next_timer() const
-	{ return (not (timers.empty())); };
+	{ return (cioloop::has_loop() && cioloop::get_loop().has_ciosrv(const_cast<ciosrv*>(this)) && (not (timers.empty()))); };
 
 	/**
 	 *
@@ -1033,11 +1103,11 @@ protected:
 	{ return timers.get_expired_timer(); };
 
 	/**
-	 *
+	 * @brief	Only called from within main loop, use pthread_self() here
 	 */
 	bool
 	has_expired_timer() const
-	{ return timers.has_expired_timer(); };
+	{ return (cioloop::has_loop() && cioloop::get_loop().has_ciosrv(const_cast<ciosrv*>(this)) && timers.has_expired_timer()); };
 
 	/**
 	 * @name Management methods for timers and events
@@ -1125,7 +1195,8 @@ protected:
 	void
 	cancel_all_timers() {
 		timers.clear();
-		rofl::cioloop::get_loop(get_thread_id()).has_no_timer(this);
+		if (rofl::cioloop::has_loop(get_thread_id()))
+			rofl::cioloop::get_loop(get_thread_id()).has_no_timer(this);
 	};
 
 	/**
@@ -1135,7 +1206,8 @@ protected:
 	void
 	cancel_all_events() {
 		events.clear();
-		rofl::cioloop::get_loop(get_thread_id()).has_no_event(this);
+		if (rofl::cioloop::has_loop(get_thread_id()))
+			rofl::cioloop::get_loop(get_thread_id()).has_no_event(this);
 	};
 
 	/**@}*/
@@ -1148,7 +1220,13 @@ private:
 	 * @brief	Called by cioloop
 	 */
 	void
-	__handle_event();
+	__handle_event() {
+		try {
+			while (has_next_event()) {
+				handle_event(get_next_event());
+			}
+		} catch (eEventsNotFound& e) {/* do nothing */ }
+	};
 
 	/**
 	 * @brief	Called by cioloop
@@ -1166,16 +1244,10 @@ private:
 	void
 	__handle_timeout() {
 		try {
-#ifndef NDEBUG
-			rofl::logging::trace << "[rofl-common][ciosrv][handle_timeout] #timers: "
-					<< timers.size() << std::endl;
-#endif
-			ctimer timer = timers.get_expired_timer();
-#ifndef NDEBUG
-			rofl::logging::trace << "[rofl-common][ciosrv][handle_timeout] timer: "
-					<< (ctimer::now().get_timespec() - timer.get_timespec()).str() << std::endl;
-#endif
-			handle_timeout(timer.get_opaque());
+			while (has_expired_timer()) {
+				ctimer timer = timers.get_expired_timer();
+				handle_timeout(timer.get_opaque(), timer.get_data());
+			}
 		} catch (eTimersNotFound& e) {/*do nothing*/}
 	};
 

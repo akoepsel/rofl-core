@@ -57,15 +57,45 @@ crofdpt::handle_timeout(int opaque, void *data)
 
 
 void
-crofdpt::work_on_eventqueue()
+crofdpt::handle_event(
+		const cevent& event)
 {
+	switch (event.get_cmd()) {
+	case EVENT_CONN_ESTABLISHED: {
+		work_on_eventqueue(EVENT_CONN_ESTABLISHED);
+	} break;
+	case EVENT_CONN_TERMINATED: {
+		work_on_eventqueue(EVENT_CONN_TERMINATED);
+	} break;
+	case EVENT_CONN_FAILED: {
+		work_on_eventqueue(EVENT_CONN_FAILED);
+	} break;
+	case EVENT_CONN_REFUSED: {
+		work_on_eventqueue(EVENT_CONN_REFUSED);
+	} break;
+	default: {
+
+	};
+	}
+}
+
+
+
+void
+crofdpt::work_on_eventqueue(
+		enum crofdpt_event_t event)
+{
+	if (EVENT_NONE != event) {
+		events.push_back(event);
+	}
+
 	flags.set(FLAG_ENGINE_IS_RUNNING);
 	while (not events.empty()) {
 		enum crofdpt_event_t event = events.front();
 		events.pop_front();
 
 		switch (event) {
-		case EVENT_CONNECTED: {
+		case EVENT_CONN_ESTABLISHED: {
 			event_connected();
 		} break;
 		case EVENT_DISCONNECTED: {
@@ -169,7 +199,7 @@ void
 crofdpt::event_conn_terminated()
 {
 	rofl::logging::debug << "[rofl-common][crofdpt] rcvd event -conn-terminated-" << std::endl;
-	rofl::RwLock rwlock(conns_terminated_rwlock, rofl::RwLock::RWLOCK_WRITE);
+	rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
 	for (std::list<rofl::cauxid>::iterator
 			it = conns_terminated.begin(); it != conns_terminated.end(); ++it) {
 		call_env().handle_conn_terminated(*this, *it);
@@ -183,7 +213,7 @@ void
 crofdpt::event_conn_refused()
 {
 	rofl::logging::debug << "[rofl-common][crofdpt] rcvd event -conn-refused-" << std::endl;
-	rofl::RwLock rwlock(conns_refused_rwlock, rofl::RwLock::RWLOCK_WRITE);
+	rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
 	for (std::list<rofl::cauxid>::iterator
 			it = conns_refused.begin(); it != conns_refused.end(); ++it) {
 		call_env().handle_conn_refused(*this, *it);
@@ -197,7 +227,7 @@ void
 crofdpt::event_conn_failed()
 {
 	rofl::logging::debug << "[rofl-common][crofdpt] rcvd event -conn-failed-" << std::endl;
-	rofl::RwLock rwlock(conns_failed_rwlock, rofl::RwLock::RWLOCK_WRITE);
+	rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
 	for (std::list<rofl::cauxid>::iterator
 			it = conns_failed.begin(); it != conns_failed.end(); ++it) {
 		call_env().handle_conn_failed(*this, *it);
@@ -235,7 +265,7 @@ crofdpt::event_features_request_expired(
 	switch (state) {
 	case STATE_WAIT_FOR_FEATURES: {
 		//state = STATE_DISCONNECTED;
-		push_on_eventqueue(EVENT_DISCONNECTED);
+		work_on_eventqueue(EVENT_DISCONNECTED);
 	} break;
 	case STATE_ESTABLISHED: {
 		call_env().handle_features_reply_timeout(*this, xid);
@@ -295,7 +325,7 @@ crofdpt::event_get_config_request_expired(
 	switch (state) {
 	case STATE_WAIT_FOR_GET_CONFIG: {
 		transactions.clear();
-		push_on_eventqueue(EVENT_DISCONNECTED);
+		work_on_eventqueue(EVENT_DISCONNECTED);
 	} break;
 	case STATE_ESTABLISHED: {
 		call_env().handle_get_config_reply_timeout(*this, xid);
@@ -348,7 +378,7 @@ crofdpt::event_table_stats_request_expired(
 	case STATE_WAIT_FOR_TABLE_STATS: {
 		transactions.clear();
 		//state = STATE_DISCONNECTED;
-		push_on_eventqueue(EVENT_DISCONNECTED);
+		work_on_eventqueue(EVENT_DISCONNECTED);
 	} break;
 	case STATE_ESTABLISHED: {
 		// do nothing
@@ -395,7 +425,7 @@ crofdpt::event_table_features_stats_request_expired(
 	switch (state) {
 	case STATE_WAIT_FOR_TABLE_FEATURES_STATS: {
 		transactions.clear();
-		push_on_eventqueue(EVENT_DISCONNECTED);
+		work_on_eventqueue(EVENT_DISCONNECTED);
 	} break;
 	case STATE_ESTABLISHED: {
 		// do nothing
@@ -446,7 +476,7 @@ crofdpt::event_port_desc_request_expired(
 	switch (state) {
 	case STATE_WAIT_FOR_PORT_DESC_STATS: {
 		transactions.clear();
-		push_on_eventqueue(EVENT_DISCONNECTED);
+		work_on_eventqueue(EVENT_DISCONNECTED);
 	} break;
 	case STATE_ESTABLISHED: {
 		call_env().handle_port_desc_stats_reply_timeout(*this, xid);
@@ -1995,12 +2025,12 @@ crofdpt::features_reply_rcvd(
 			call_env().handle_features_reply(*this, auxid, reply);
 		}
 
-		push_on_eventqueue(EVENT_FEATURES_REPLY_RCVD);
+		work_on_eventqueue(EVENT_FEATURES_REPLY_RCVD);
 
 	} catch (RoflException& e) {
 
 		rofl::logging::error << "[rofl-common][crofdpt] eRoflException in Features.reply rcvd" << *msg << std::endl;
-		push_on_eventqueue(EVENT_DISCONNECTED);
+		work_on_eventqueue(EVENT_DISCONNECTED);
 	}
 
 	delete msg;
@@ -2028,7 +2058,7 @@ crofdpt::get_config_reply_rcvd(
 	}
 	delete msg;
 
-	push_on_eventqueue(EVENT_GET_CONFIG_REPLY_RCVD);
+	work_on_eventqueue(EVENT_GET_CONFIG_REPLY_RCVD);
 }
 
 
@@ -2135,7 +2165,7 @@ crofdpt::table_stats_reply_rcvd(
 	if (STATE_ESTABLISHED == state) {
 		call_env().handle_table_stats_reply(*this, auxid, reply);
 	} else {
-		push_on_eventqueue(EVENT_TABLE_STATS_REPLY_RCVD);
+		work_on_eventqueue(EVENT_TABLE_STATS_REPLY_RCVD);
 	}
 	delete msg;
 }
@@ -2339,7 +2369,7 @@ crofdpt::table_features_stats_reply_rcvd(
 	}
 	delete msg;
 
-	push_on_eventqueue(EVENT_TABLE_FEATURES_STATS_REPLY_RCVD);
+	work_on_eventqueue(EVENT_TABLE_FEATURES_STATS_REPLY_RCVD);
 }
 
 
@@ -2361,7 +2391,7 @@ crofdpt::port_desc_stats_reply_rcvd(
 	}
 	delete msg;
 
-	push_on_eventqueue(EVENT_PORT_DESC_STATS_REPLY_RCVD);
+	work_on_eventqueue(EVENT_PORT_DESC_STATS_REPLY_RCVD);
 }
 
 

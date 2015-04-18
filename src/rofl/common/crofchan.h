@@ -322,22 +322,9 @@ private:
 	handle_connect_refused(crofconn& conn) {
 		rofl::logging::debug2 << "[rofl-common][crofchan] "
 				<< "connection refused, auxid: " << conn.get_aux_id().str() << std::endl;
-		rofl::RwLock rwlock(conns_refused_rwlock, rofl::RwLock::RWLOCK_WRITE);
+		rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
 		conns_refused.push_back(conn.get_aux_id());
-		push_on_eventqueue(EVENT_CONN_REFUSED);
-		if (rofl::cauxid(0) == conn.get_aux_id()) {
-			for (std::map<rofl::cauxid, crofconn*>::iterator
-					it = conns.begin(); it != conns.end(); ++it) {
-				if (conn.get_aux_id() == it->first) {
-					continue;
-				}
-				if (it->second->is_established()) {
-					it->second->close();
-					conns_terminated.push_back(it->first);
-				}
-			}
-			push_on_eventqueue(EVENT_CONN_TERMINATED);
-		}
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CONN_REFUSED));
 	};
 
 	/**
@@ -347,22 +334,9 @@ private:
 	handle_connect_failed(crofconn& conn) {
 		rofl::logging::debug2 << "[rofl-common][crofchan] "
 				<< "connection failed, auxid: " << conn.get_aux_id().str() << std::endl;
-		rofl::RwLock rwlock(conns_failed_rwlock, rofl::RwLock::RWLOCK_WRITE);
+		rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
 		conns_failed.push_back(conn.get_aux_id());
-		push_on_eventqueue(EVENT_CONN_FAILED);
-		if (rofl::cauxid(0) == conn.get_aux_id()) {
-			for (std::map<rofl::cauxid, crofconn*>::iterator
-					it = conns.begin(); it != conns.end(); ++it) {
-				if (conn.get_aux_id() == it->first) {
-					continue;
-				}
-				if (it->second->is_established()) {
-					it->second->close();
-					conns_terminated.push_back(it->first);
-				}
-			}
-			push_on_eventqueue(EVENT_CONN_TERMINATED);
-		}
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CONN_FAILED));
 	};
 
 	/**
@@ -371,34 +345,10 @@ private:
 	virtual void
 	handle_connected(crofconn& conn, uint8_t ofp_version) {
 		rofl::logging::debug2 << "[rofl-common][crofchan] "
-				<< "connection established, auxid: "
-				<< conn.get_aux_id().str() << std::endl;
-		if (rofl::cauxid(0) == conn.get_aux_id()) {
-			this->ofp_version = ofp_version;
-
-			for (std::map<cauxid, crofconn*>::iterator
-					it = conns.begin(); it != conns.end(); ++it) {
-				if (0 == it->first.get_id())
-					continue;
-				if (it->second->is_actively_established()) {
-					it->second->reconnect(true);
-				}
-			}
-
-		} else {
-			if (this->ofp_version != ofp_version) {
-				rofl::logging::warn << "[rofl-common][crofchan] "
-						<< "auxiliary connection with invalid OFP version "
-						<< "negotiated, closing connection. " << conn.str() << std::endl;
-
-				drop_conn(conn.get_aux_id());
-				return;
-
-			}
-		}
-		rofl::RwLock rwlock(conns_established_rwlock, rofl::RwLock::RWLOCK_WRITE);
+				<< "connection established, auxid: " << conn.get_aux_id().str() << std::endl;
+		rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
 		conns_established.push_back(conn.get_aux_id());
-		push_on_eventqueue(EVENT_CONN_ESTABLISHED);
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CONN_ESTABLISHED));
 	};
 
 	/**
@@ -408,24 +358,9 @@ private:
 	handle_closed(crofconn& conn) {
 		rofl::logging::debug2 << "[rofl-common][crofchan] "
 				<< "connection terminated, auxid: " << conn.get_aux_id().str() << std::endl;
-		if (conn.get_aux_id() == rofl::cauxid(0)) {
-			this->ofp_version = rofl::openflow::OFP_VERSION_UNKNOWN;
-		}
-		rofl::RwLock rwlock(conns_terminated_rwlock, rofl::RwLock::RWLOCK_WRITE);
+		rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
 		conns_terminated.push_back(conn.get_aux_id());
-		push_on_eventqueue(EVENT_CONN_TERMINATED);
-		if (rofl::cauxid(0) == conn.get_aux_id()) {
-			for (std::map<rofl::cauxid, crofconn*>::iterator
-					it = conns.begin(); it != conns.end(); ++it) {
-				if (conn.get_aux_id() == it->first) {
-					continue;
-				}
-				if (it->second->is_established()) {
-					it->second->close();
-					conns_terminated.push_back(it->first);
-				}
-			}
-		}
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CONN_TERMINATED));
 	};
 
 	/**
@@ -477,15 +412,16 @@ private:
 	/**
 	 *
 	 */
-	void
-	push_on_eventqueue(
-			enum crofchan_event_t event = EVENT_NONE);
+	virtual void
+	handle_event(
+			const cevent& event);
 
 	/**
 	 *
 	 */
 	void
-	work_on_eventqueue();
+	work_on_eventqueue(
+			enum crofchan_event_t event = EVENT_NONE);
 
 	/**
 	 *
@@ -578,20 +514,12 @@ private:
 
 	// established connection ids
 	std::list<rofl::cauxid>				conns_established;
-	// rwlock
-	PthreadRwLock						conns_established_rwlock;
 	// terminated connection ids
 	std::list<rofl::cauxid>				conns_terminated;
-	// rwlock
-	PthreadRwLock						conns_terminated_rwlock;
 	// refused connection ids
 	std::list<rofl::cauxid>				conns_refused;
-	// rwlock
-	PthreadRwLock						conns_refused_rwlock;
 	// failed connection ids
 	std::list<rofl::cauxid>				conns_failed;
-	// rwlock
-	PthreadRwLock						conns_failed_rwlock;
 };
 
 }; /* namespace rofl */

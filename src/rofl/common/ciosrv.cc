@@ -36,29 +36,29 @@ ciosrv::~ciosrv()
 			<< ", target tid: " << std::hex << get_thread_id() << std::dec
 			<< ", running tid: " << std::hex << pthread_self() << std::dec
 			<< std::endl;
-	timers.clear();
-	events.clear();
-	rofl::cioloop::get_loop(get_thread_id()).has_no_timer(this);
-	rofl::cioloop::get_loop(get_thread_id()).has_no_event(this);
-	for (std::set<int>::iterator
-			it = rfds.begin(); it != rfds.end(); ++it) {
-		rofl::cioloop::get_loop(get_thread_id()).drop_readfd(this, (*it));
+	if (rofl::cioloop::has_loop(get_thread_id())) {
+		cancel_all_events();
+		cancel_all_timers();
+		for (std::set<int>::iterator
+				it = rfds.begin(); it != rfds.end(); ++it) {
+			rofl::cioloop::get_loop(get_thread_id()).drop_readfd(this, (*it));
+		}
+		for (std::set<int>::iterator
+				it = wfds.begin(); it != wfds.end(); ++it) {
+			rofl::cioloop::get_loop(get_thread_id()).drop_writefd(this, (*it));
+		}
+		rofl::cioloop::get_loop(get_thread_id()).deregister_ciosrv(this);
 	}
-	for (std::set<int>::iterator
-			it = wfds.begin(); it != wfds.end(); ++it) {
-		rofl::cioloop::get_loop(get_thread_id()).drop_writefd(this, (*it));
-	}
-	rofl::cioloop::get_loop(get_thread_id()).deregister_ciosrv(this);
 }
 
 
 
+#if 0
 void
 ciosrv::__handle_event()
 {
 	try {
-
-		if (not rofl::cioloop::get_loop(get_thread_id()).has_ciosrv(this)) {
+		if (not has_next_event()) {
 #ifndef NDEBUG
 			rofl::logging::trace << "[rofl-common][ciosrv][event] ciosrv instance deleted, "
 					<< "returning from event loop" << std::endl;
@@ -88,7 +88,7 @@ ciosrv::__handle_event()
 		// do nothing
 	}
 }
-
+#endif
 
 
 
@@ -229,10 +229,16 @@ cioloop::run_on_timers(
 				it = clone.begin(); it != clone.end(); ++it) {
 			ciosrv* svc = *it;
 
-			if (not has_ciosrv(svc) || not svc->has_next_timer())
+			// ciosrv instance was deleted before
+			if (not has_ciosrv(svc))
 				continue;
 
-			while (svc->has_expired_timer()) {
+			// no timer at all in this ciosrv instance
+			if (not svc->has_next_timer())
+				continue;
+
+			// ciosrv instance urgent timer (already expired)
+			if (svc->has_expired_timer()) {
 				try {
 #ifndef NDEBUG
 					rofl::logging::trace << "[rofl-common][cioloop][run_on_timers] urgent timer found,"
@@ -295,7 +301,7 @@ cioloop::run_on_events()
 
 		for (std::list<ciosrv*>::iterator
 				it = clone.begin(); it != clone.end(); ++it) {
-			if (not has_ciosrv(*it))
+			if (not has_loop() || not has_ciosrv(*it))
 				continue;
 			(*(*it)).__handle_event();
 		}

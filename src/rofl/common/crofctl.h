@@ -785,6 +785,8 @@ public:
 		rofl::logging::debug << "[rofl-common][crofctl] "
 				<< "instance destroyed, ctlid: " << ctlid.str() << std::endl;
 		crofctl::rofctls.erase(ctlid);
+		events.clear();
+		transactions.clear();
 	};
 
 	/**

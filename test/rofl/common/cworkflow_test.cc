@@ -27,12 +27,10 @@ cworkflow_test::setUp()
 #endif
 	rofl::logging::set_debug_level(8);
 
-	rofl::crofcore::initialize();
-
 	int openflow_bind_portno = 6653;
 	rofl::csocket::socket_type_t socket_type = rofl::csocket::SOCKET_TYPE_PLAIN;
-	int num_of_ctls = 2;
-	int num_of_dpts = 4;
+	int num_of_ctls = 1;
+	int num_of_dpts = 1;
 	rofl::openflow::cofhello_elem_versionbitmap vbitmap;
 	vbitmap.add_ofp_version(rofl::openflow13::OFP_VERSION);
 
@@ -67,20 +65,6 @@ cworkflow_test::setUp()
 
 		dpts[i]->add_ctl(ctlid, vbitmap).connect(rofl::cauxid(0), socket_type, socket_params);
 	}
-
-	int cnt = 60;
-
-	while (cnt > 0) {
-		struct timespec ts;
-		ts.tv_sec = 1;
-		ts.tv_nsec = 0;
-
-		std::cerr << ".";
-
-		pselect(0, NULL, NULL, NULL, &ts, NULL);
-		--cnt;
-	}
-	std::cerr << std::endl;
 }
 
 
@@ -95,15 +79,15 @@ cworkflow_test::tearDown()
 	}
 	dpts.clear();
 
+	sleep(1);
+
 	for (std::map<unsigned int, controller_t*>::iterator
 			it = ctls.begin(); it != ctls.end(); ++it) {
 		delete it->second;
 	}
 	ctls.clear();
 
-	sleep(3);
-
-	rofl::crofcore::terminate();
+	//sleep(2);
 }
 
 
@@ -111,6 +95,19 @@ cworkflow_test::tearDown()
 void
 cworkflow_test::testRoflImpl()
 {
+	int cnt = 15;
+
+	while (cnt > 0) {
+		struct timespec ts;
+		ts.tv_sec = 1;
+		ts.tv_nsec = 0;
+
+		std::cerr << ".";
+
+		pselect(0, NULL, NULL, NULL, &ts, NULL);
+		--cnt;
+	}
+	std::cerr << std::endl;
 }
 
 

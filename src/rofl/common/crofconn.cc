@@ -58,9 +58,6 @@ crofconn::~crofconn()
 	env = NULL;
 	rofl::logging::debug << "[rofl-common][crofconn] "
 			<< "connection destroyed, auxid: " << auxiliary_id.str() << std::endl;
-	if (STATE_DISCONNECTED != state) {
-		run_engine(EVENT_DISCONNECTED);
-	}
 
 	if (NULL != rofsock) {
 		delete rofsock; rofsock = NULL;
@@ -165,6 +162,12 @@ crofconn::close()
 	dlqueue.clear();
 
 	rofsock->close();
+
+	// suppress any events received so far from crofsock instance
+	events.clear();
+
+	ciosrv::cancel_all_events();
+	ciosrv::cancel_all_timers();
 }
 
 

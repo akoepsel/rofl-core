@@ -993,7 +993,7 @@ class crofdpt :
 	enum crofdpt_event_t {
 		EVENT_NONE                                  = 0,
 		EVENT_DISCONNECTED                          = 1,
-		EVENT_CONNECTED                             = 2,
+		EVENT_CONN_ESTABLISHED                             = 2,
 		EVENT_CONN_TERMINATED                       = 3,
 		EVENT_CONN_REFUSED                          = 4,
 		EVENT_CONN_FAILED                           = 5,
@@ -1083,7 +1083,6 @@ public:
 				<< "instance destroyed, dptid: " << dptid.str() << std::endl;
 		crofdpt::rofdpts.erase(dptid);
 		events.clear();
-		rofchan.close();
 		transactions.clear();
 	};
 
@@ -2137,13 +2136,54 @@ private:
 			const rofl::cauxid& auxid) {
 		rofl::logging::info << "[rofl-common][crofdpt] dptid: " << dptid.str()
 						<< " control connection established, auxid: " << auxid.str() << std::endl;
+		rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
+		conns_established.push_back(auxid);
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CONN_ESTABLISHED));
+	};
+
+	virtual void
+	handle_conn_terminated(
+			crofchan& chan,
+			const rofl::cauxid& auxid) {
+		rofl::logging::info << "[rofl-common][crofdpt] dptid: " << dptid.str()
+						<< " control connection terminated, auxid: " << auxid.str() << std::endl;
+		rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
+		conns_terminated.push_back(auxid);
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CONN_TERMINATED));
+	};
+
+	virtual void
+	handle_conn_refused(
+			crofchan& chan,
+			const rofl::cauxid& auxid) {
+		rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
+		conns_refused.push_back(auxid);
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CONN_REFUSED));
+	};
+
+	virtual void
+	handle_conn_failed(
+			crofchan& chan,
+			const rofl::cauxid& auxid) {
+		rofl::RwLock(conns_rwlock, rofl::RwLock::RWLOCK_WRITE);
+		conns_failed.push_back(auxid);
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CONN_FAILED));
+	};
+
+#if 0
+	virtual void
+	handle_conn_established(
+			crofchan& chan,
+			const rofl::cauxid& auxid) {
+		rofl::logging::info << "[rofl-common][crofdpt] dptid: " << dptid.str()
+						<< " control connection established, auxid: " << auxid.str() << std::endl;
 
 		call_env().handle_conn_established(*this, auxid);
 
 		if (auxid == rofl::cauxid(0)) {
 			rofl::logging::info << "[rofl-common][crofdpt] dpid: " << std::hex << get_dpid().str() << std::dec
 					<< " OFP control channel established, " << chan.str() << std::endl;
-			push_on_eventqueue(EVENT_CONNECTED);
+			push_on_eventqueue(EVENT_CONN_ESTABLISHED);
 		}
 	};
 
@@ -2184,6 +2224,7 @@ private:
 		conns_failed.push_back(auxid);
 		push_on_eventqueue(EVENT_CONN_FAILED);
 	};
+#endif
 
 	virtual void
 	handle_write(crofchan& chan, const rofl::cauxid& auxid)
@@ -2215,8 +2256,13 @@ private:
 	handle_timeout(
 		int opaque, void *data = (void*)0);
 
+	virtual void
+	handle_event(
+			const cevent& event);
+
 private:
 
+#if 0
 	void
 	push_on_eventqueue(
 			enum crofdpt_event_t event = EVENT_NONE) {
@@ -2227,9 +2273,11 @@ private:
 			register_timer(TIMER_RUN_ENGINE, rofl::ctimespec(0, 100));
 		}
 	};
+#endif
 
 	void
-	work_on_eventqueue();
+	work_on_eventqueue(
+			enum crofdpt_event_t event = EVENT_NONE);
 
 	void
 	event_disconnected();
@@ -2428,11 +2476,10 @@ private:
 	uint16_t                         miss_send_len;
 	unsigned int                     state;
 	std::deque<enum crofdpt_event_t> events;
-	PthreadRwLock                    conns_terminated_rwlock;
+	PthreadRwLock                    conns_rwlock;
+	std::list<rofl::cauxid>          conns_established;
 	std::list<rofl::cauxid>          conns_terminated;
-	PthreadRwLock                    conns_refused_rwlock;
 	std::list<rofl::cauxid>          conns_refused;
-	PthreadRwLock                    conns_failed_rwlock;
 	std::list<rofl::cauxid>          conns_failed;
 	std::bitset<32>                  flags;
 	// delay queue, used for storing asynchronous messages during connection setup

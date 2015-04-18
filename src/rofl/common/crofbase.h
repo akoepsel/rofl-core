@@ -107,6 +107,12 @@ class crofbase :
 	public rofl::crofctl_env,
 	public rofl::crofdpt_env
 {
+	enum crofbase_event_t {
+		EVENT_NONE = 0,
+		EVENT_CHAN_ESTABLISHED = 1,
+		EVENT_CHAN_TERMINATED = 2,
+	};
+
 public:
 
 	/**
@@ -116,7 +122,7 @@ public:
 	 * allowed for passively created OpenFlow sockets. You may specify
 	 * multiple OpenFlow versions as needed.
 	 *
-	 * @param versionbitmap OpenFlow version bitmap
+	 * @param versionbitmap OpenFlow version bitmap for incoming connections
 	 */
 	crofbase(
 			const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap =
@@ -2531,6 +2537,41 @@ private:
 		}
 	};
 
+public:
+
+	virtual void
+	handle_chan_established(
+			crofdpt& dpt) {
+		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
+		dpts_chan_established.push_back(dpt.get_dptid());
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CHAN_ESTABLISHED));
+	};
+
+	virtual void
+	handle_chan_terminated(
+			crofdpt& dpt) {
+		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
+		dpts_chan_terminated.push_back(dpt.get_dptid());
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CHAN_TERMINATED));
+	};
+
+	virtual void
+	handle_chan_established(
+			crofctl& ctl) {
+		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
+		ctls_chan_established.push_back(ctl.get_ctlid());
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CHAN_ESTABLISHED));
+	};
+
+	virtual void
+	handle_chan_terminated(
+			crofctl& ctl) {
+		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
+		ctls_chan_terminated.push_back(ctl.get_ctlid());
+		rofl::ciosrv::notify(rofl::cevent(EVENT_CHAN_TERMINATED));
+	};
+
+#if 0
 	virtual void
 	handle_chan_established(
 			crofdpt& dpt)
@@ -2562,6 +2603,23 @@ private:
 		}
 		handle_ctl_close(ctlid);
 	};
+#endif
+
+private:
+
+	virtual void
+	handle_event(
+			const cevent& event);
+
+	void
+	work_on_eventqueue(
+			enum crofbase_event_t event = EVENT_NONE);
+
+	void
+	event_chan_established();
+
+	void
+	event_chan_terminated();
 
 private:
 
@@ -2579,6 +2637,17 @@ private:
 	std::map<unsigned int, csocket*>
 									ctl_sockets;
 	mutable PthreadRwLock           ctl_sockets_rwlock;
+
+	mutable PthreadRwLock           chans_rwlock;
+
+	/**< list of ctl/dpt identifiers with channel going up */
+	std::deque<rofl::cctlid>		ctls_chan_established;
+	std::deque<rofl::cdptid>		dpts_chan_established;
+
+	/**< list of ctl/dpt identifiers with channel going down */
+	std::deque<rofl::cctlid>		ctls_chan_terminated;
+	std::deque<rofl::cdptid>		dpts_chan_terminated;
+
 	// supported OpenFlow versions
 	rofl::openflow::cofhello_elem_versionbitmap
 									versionbitmap;
@@ -2590,6 +2659,8 @@ private:
 	uint64_t						cached_generation_id;
 
 	std::bitset<32>					flags;
+
+	std::deque<enum crofbase_event_t>	events;
 };
 
 }; // end of namespace
