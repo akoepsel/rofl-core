@@ -8,6 +8,7 @@ using namespace rofl;
 
 /*static*/std::map<crofbase*, crofcore*>		crofcore::rofcores;
 /*static*/PthreadRwLock          				crofcore::rofcores_rwlock;
+/*static*/std::set<crofcore*>					crofcore::rofcores_term;
 /*static*/bool                   				crofcore::initialized = false;
 /*static*/unsigned int           				crofcore::next_worker_id = 0;
 /*static*/std::vector<pthread_t> 				crofcore::workers;
@@ -30,6 +31,10 @@ void
 crofcore::initialize(
 		unsigned int workers_num)
 {
+#ifndef NDEBUG
+	rofl::logging::debug3 << "[rofl-common][crofcore][initialize] starting " << workers_num << " worker threads" << std::endl;
+#endif
+
 	workers_num = (0 == workers_num) ? 1 : workers_num;
 
 	RwLock(workers_rwlock, RwLock::RWLOCK_WRITE);
@@ -44,6 +49,10 @@ crofcore::initialize(
 	}
 	next_worker_id = old_workers_num;
 	crofcore::initialized = true;
+
+#ifndef NDEBUG
+	rofl::logging::debug3 << "[rofl-common][crofcore][initialize] running" << std::endl;
+#endif
 }
 
 
@@ -52,11 +61,23 @@ crofcore::initialize(
 void
 crofcore::terminate()
 {
+#ifndef NDEBUG
+	rofl::logging::debug3 << "[rofl-common][crofcore][terminate] removing worker threads" << std::endl;
+#endif
+
 	RwLock(workers_rwlock, RwLock::RWLOCK_WRITE);
 
 	if (not crofcore::initialized) {
 		return;
 	}
+
+	for (std::map<crofbase*, crofcore*>::iterator
+			it = crofcore::rofcores.begin(); it != crofcore::rofcores.end(); ++it) {
+		it->second->close_ctl_listening();
+		it->second->close_dpt_listening();
+	}
+
+	sleep(1);
 
 	for (std::vector<pthread_t>::iterator
 			it = workers.begin(); it != workers.end(); ++it) {
@@ -65,12 +86,41 @@ crofcore::terminate()
 	workers.clear();
 	crofcore::initialized = false;
 
+	for (std::map<crofbase*, crofcore*>::iterator
+			it = crofcore::rofcores.begin(); it != crofcore::rofcores.end(); ++it) {
+		delete it->second;
+	}
+	crofcore::rofcores.clear();
+
+	for (std::set<crofcore*>::iterator
+			it = crofcore::rofcores_term.begin(); it != crofcore::rofcores_term.end(); ++it) {
+		delete *it;
+	}
+	crofcore::rofcores_term.clear();
+
 	rofl::cioloop::get_loop().shutdown();
 
 	rofl::cioloop::get_loop().cleanup_on_exit();
+
+#ifndef NDEBUG
+	rofl::logging::debug3 << "[rofl-common][crofcore][terminate] done" << std::endl;
+#endif
 }
 
 
+
+void
+crofcore::handle_timeout(
+		int opaque, void* data)
+{
+	switch (opaque) {
+	case TIMER_SHUTDOWN: {
+		RwLock(crofcore::rofcores_rwlock, RwLock::RWLOCK_WRITE);
+		crofcore::rofcores_term.erase(this);
+		delete this;
+	} return;
+	}
+}
 
 
 
@@ -85,6 +135,9 @@ crofcore::handle_event(
 	case EVENT_CHAN_TERMINATED: {
 		work_on_eventqueue(EVENT_CHAN_TERMINATED);
 	} break;
+	case EVENT_DO_SHUTDOWN: {
+		work_on_eventqueue(EVENT_DO_SHUTDOWN);
+	} break;
 	default: {
 
 	};
@@ -95,14 +148,14 @@ crofcore::handle_event(
 
 void
 crofcore::work_on_eventqueue(
-		enum crofbase_event_t event)
+		enum crofcore_event_t event)
 {
 	if (EVENT_NONE != event) {
 		events.push_back(event);
 	}
 
 	while (not events.empty()) {
-		enum crofbase_event_t event = events.front();
+		enum crofcore_event_t event = events.front();
 		events.pop_front();
 
 		switch (event) {
@@ -112,11 +165,37 @@ crofcore::work_on_eventqueue(
 		case EVENT_CHAN_TERMINATED: {
 			event_chan_terminated();
 		} break;
+		case EVENT_DO_SHUTDOWN: {
+			event_do_shutdown();
+		} break;
 		default: {
 			// ignore yet unknown events
 		};
 		}
 	}
+}
+
+
+
+void
+crofcore::event_do_shutdown()
+{
+	close_ctl_listening();
+	close_dpt_listening();
+
+	for (std::map<cctlid, crofctl*>::iterator
+			it = rofctls.begin(); it != rofctls.end(); ++it) {
+		it->second->shutdown();
+	}
+
+	for (std::map<cdptid, crofdpt*>::iterator
+			it = rofdpts.begin(); it != rofdpts.end(); ++it) {
+		it->second->shutdown();
+	}
+
+	events.clear();
+
+	register_timer(TIMER_SHUTDOWN, ctimespec(2));
 }
 
 
@@ -201,6 +280,9 @@ crofcore::handle_connected(
 	 * if none exists, create new one, otherwise, add connection to existing crofdpt
 	 */
 
+	RwLock(rofconns_accepting_rwlock, RwLock::RWLOCK_WRITE);
+	rofconns_accepting.erase(&conn);
+
 	switch (conn.get_flavour()) {
 	case rofl::crofconn::FLAVOUR_CTL: {
 		rofl::logging::info << "[rofl-common][crofbase] "
@@ -226,18 +308,21 @@ void
 crofcore::handle_listen(
 		csocket& socket, int newsd)
 {
+	RwLock(rofconns_accepting_rwlock, RwLock::RWLOCK_WRITE);
+	crofconn* conn = (crofconn*)NULL;
 	if (is_ctl_listening(socket)) {
 		rofl::logging::debug << "[rofl-common][crofbase] "
 				<< "accept => creating new crofconn for ctl peer on sd: " << newsd << std::endl;
-		(new rofl::crofconn(this, versionbitmap))->accept(
+		(conn = new rofl::crofconn(this, versionbitmap))->accept(
 				socket.get_socket_type(), socket.get_socket_params(), newsd, rofl::crofconn::FLAVOUR_CTL);
 	}
 	if (is_dpt_listening(socket)) {
 		rofl::logging::debug << "[rofl-common][crofbase] "
 						<< "accept => creating new crofconn for dpt peer on sd: " << newsd << std::endl;
-		(new rofl::crofconn(this, versionbitmap))->accept(
+		(conn = new rofl::crofconn(this, versionbitmap))->accept(
 				socket.get_socket_type(), socket.get_socket_params(), newsd, rofl::crofconn::FLAVOUR_DPT);
 	}
+	rofconns_accepting.insert(conn);
 }
 
 

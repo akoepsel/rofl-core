@@ -1095,6 +1095,13 @@ public:
 	get_dptid() const
 	{ return dptid; };
 
+	/**
+	 * @brief	Shutdown crofchan instance
+	 */
+	void
+	shutdown()
+	{ rofchan.close(); };
+
 public:
 
 	/**

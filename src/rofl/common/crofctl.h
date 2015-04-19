@@ -798,6 +798,13 @@ public:
 	get_ctlid() const
 	{ return ctlid; };
 
+	/**
+	 * @brief	Shutdown crofchan instance
+	 */
+	void
+	shutdown()
+	{ rofchan.close(); };
+
 public:
 
 	/**

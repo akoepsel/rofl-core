@@ -79,15 +79,11 @@ cworkflow_test::tearDown()
 	}
 	dpts.clear();
 
-	sleep(1);
-
 	for (std::map<unsigned int, controller_t*>::iterator
 			it = ctls.begin(); it != ctls.end(); ++it) {
 		delete it->second;
 	}
 	ctls.clear();
-
-	//sleep(2);
 }
 
 

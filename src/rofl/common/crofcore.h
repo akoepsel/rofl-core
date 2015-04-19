@@ -41,10 +41,15 @@ class crofcore :
 		public rofl::crofctl_env,
 		public rofl::crofdpt_env
 {
-	enum crofbase_event_t {
+	enum crofcore_event_t {
 		EVENT_NONE = 0,
 		EVENT_CHAN_ESTABLISHED = 1,
 		EVENT_CHAN_TERMINATED = 2,
+		EVENT_DO_SHUTDOWN = 3,
+	};
+
+	enum crofcore_timer_t {
+		TIMER_SHUTDOWN = 0,
 	};
 
 public:
@@ -79,19 +84,22 @@ public:
 	static void
 	deregister_rofbase(
 			crofbase* env) {
+		// do not remove crofcore instance from heap in this method!
 		RwLock(rofcores_rwlock, RwLock::RWLOCK_WRITE);
 		if (crofcore::rofcores.find(env) == crofcore::rofcores.end()) {
 			return;
 		}
+
 		// detach crofbase instance
 		crofcore::rofcores[env]->set_rofbase(NULL);
-
-		// FIXME: add crofcore instance to destruction queue
-		delete crofcore::rofcores[env];
-
-
+		// instruct crofcore instance to terminate
+		crofcore::rofcores[env]->shutdown();
+		// add crofcore instance to set of crofcore instances in shutdown
+		crofcore::rofcores_term.insert(crofcore::rofcores[env]);
+		// remove crofbase key
 		crofcore::rofcores.erase(env);
 
+		// last crofcore instance to be deleted => release occupied resources
 		if (crofcore::rofcores.empty()) {
 			crofcore::terminate();
 		}
@@ -186,6 +194,15 @@ private:
 			dpts_chan_terminated.clear();
 		}
 
+		{
+			RwLock(rofconns_accepting_rwlock, RwLock::RWLOCK_WRITE);
+			for (std::set<crofconn*>::iterator
+					it = rofconns_accepting.begin(); it != rofconns_accepting.end(); ++it) {
+				delete *it;
+			}
+			rofconns_accepting.clear();
+		}
+
 		events.clear();
 	};
 
@@ -196,6 +213,13 @@ private:
 	set_rofbase(
 			crofbase* rofbase)
 	{ this->rofbase = rofbase; };
+
+	/**
+	 *
+	 */
+	void
+	shutdown()
+	{ rofl::ciosrv::notify(rofl::cevent(EVENT_DO_SHUTDOWN)); };
 
 public:
 
@@ -1106,12 +1130,19 @@ public:
 private:
 
 	virtual void
+	handle_timeout(
+			int opaque, void* data = (void*)NULL);
+
+	virtual void
 	handle_event(
 			const cevent& event);
 
 	void
 	work_on_eventqueue(
-			enum crofbase_event_t event = EVENT_NONE);
+			enum crofcore_event_t event = EVENT_NONE);
+
+	void
+	event_do_shutdown();
 
 	void
 	event_chan_established();
@@ -1166,6 +1197,10 @@ private:
 	std::deque<rofl::cctlid>		ctls_chan_terminated;
 	std::deque<rofl::cdptid>		dpts_chan_terminated;
 
+	/**< set of crofconn instances while accepting incoming connections */
+	std::set<crofconn*>				rofconns_accepting;
+	mutable PthreadRwLock			rofconns_accepting_rwlock;
+
 	// supported OpenFlow versions
 	rofl::openflow::cofhello_elem_versionbitmap
 									versionbitmap;
@@ -1178,13 +1213,15 @@ private:
 
 	std::bitset<32>					flags;
 
-	std::deque<enum crofbase_event_t>	events;
+	std::deque<enum crofcore_event_t>	events;
 
 private:
 
 	/**< map of active crofcore instances */
 	static std::map<crofbase*, crofcore*>
 									rofcores;
+	/**< set of crofcore instances in shutdown */
+	static std::set<crofcore*>		rofcores_term;
 	/**< rwlock for rofcores */
 	static PthreadRwLock	        rofcores_rwlock;
 	/**< flag indicating rofl-common is initialized */

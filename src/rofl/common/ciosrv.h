@@ -120,9 +120,11 @@ public:
 		if (cioloop::threads.find(tid) == cioloop::threads.end()) {
 			return;
 		}
+#if 0
 		if (cioloop::get_loop(tid).has_active_elements()) {
 			throw eRofIoLoopBusy("loop has still active elements");
 		}
+#endif
 		logging::debug << "[rofl-common][cioloop][thread] calling stop, tid: 0x"
 				<< std::hex << tid << std::dec << std::endl;
 
