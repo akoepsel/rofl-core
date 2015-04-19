@@ -112,7 +112,7 @@ public:
 	 * elements assigned to this thread's IO loop
 	 */
 	static void
-	drop_thread(pthread_t tid) {
+	drop_thread(pthread_t tid, bool busy = false) {
 		logging::debug << "[rofl-common][cioloop][thread] done, tid: 0x"
 				<< std::hex << tid << std::dec << std::endl;
 		int rc = 0;
@@ -120,11 +120,9 @@ public:
 		if (cioloop::threads.find(tid) == cioloop::threads.end()) {
 			return;
 		}
-#if 0
-		if (cioloop::get_loop(tid).has_active_elements()) {
+		if (busy && cioloop::get_loop(tid).has_active_elements()) {
 			throw eRofIoLoopBusy("loop has still active elements");
 		}
-#endif
 		logging::debug << "[rofl-common][cioloop][thread] calling stop, tid: 0x"
 				<< std::hex << tid << std::dec << std::endl;
 
