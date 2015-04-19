@@ -777,7 +777,7 @@ crofdpt::send_features_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_FEATURES_REQUEST);
@@ -810,7 +810,7 @@ crofdpt::send_get_config_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_GET_CONFIG_REQUEST);
@@ -847,7 +847,7 @@ crofdpt::send_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST);
@@ -887,7 +887,7 @@ crofdpt::send_desc_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_DESC);
@@ -925,7 +925,7 @@ crofdpt::send_flow_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_FLOW);
@@ -964,7 +964,7 @@ crofdpt::send_aggr_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_AGGREGATE);
@@ -1002,7 +1002,7 @@ crofdpt::send_table_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_TABLE);
@@ -1040,7 +1040,7 @@ crofdpt::send_port_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_PORT_STATS);
@@ -1079,7 +1079,7 @@ crofdpt::send_queue_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_QUEUE);
@@ -1118,7 +1118,7 @@ crofdpt::send_group_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_GROUP);
@@ -1156,7 +1156,7 @@ crofdpt::send_group_desc_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_GROUP_DESC);
@@ -1194,7 +1194,7 @@ crofdpt::send_group_features_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_GROUP_FEATURES);
@@ -1231,7 +1231,7 @@ crofdpt::send_table_features_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_TABLE_FEATURES);
@@ -1268,7 +1268,7 @@ crofdpt::send_port_desc_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_PORT_DESC);
@@ -1308,7 +1308,7 @@ crofdpt::send_experimenter_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_EXPERIMENTER);
@@ -1349,7 +1349,7 @@ crofdpt::send_meter_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_METER);
@@ -1388,7 +1388,7 @@ crofdpt::send_meter_config_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_METER_CONFIG);
@@ -1426,7 +1426,7 @@ crofdpt::send_meter_features_stats_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_MULTIPART_REQUEST, rofl::openflow::OFPMP_METER_FEATURES);
@@ -1466,7 +1466,7 @@ crofdpt::send_packet_out_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.get_async_xid();
@@ -1506,7 +1506,7 @@ crofdpt::send_barrier_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_BARRIER_REQUEST);
@@ -1542,7 +1542,7 @@ crofdpt::send_role_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_ROLE_REQUEST);
@@ -1578,7 +1578,7 @@ crofdpt::send_flow_mod_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.get_async_xid();
@@ -1613,7 +1613,7 @@ crofdpt::send_group_mod_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.get_async_xid();
@@ -1649,7 +1649,7 @@ crofdpt::send_table_mod_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.get_async_xid();
@@ -1689,7 +1689,7 @@ crofdpt::send_port_mod_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.get_async_xid();
@@ -1731,7 +1731,7 @@ crofdpt::send_set_config_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.get_async_xid();
@@ -1768,7 +1768,7 @@ crofdpt::send_queue_get_config_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_QUEUE_GET_CONFIG_REQUEST);
@@ -1804,7 +1804,7 @@ crofdpt::send_get_async_config_request(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_GET_ASYNC_REQUEST);
@@ -1839,7 +1839,7 @@ crofdpt::send_set_async_config_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.get_async_xid();
@@ -1877,7 +1877,7 @@ crofdpt::send_meter_mod_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.get_async_xid();
@@ -1917,7 +1917,7 @@ crofdpt::send_error_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		rofl::openflow::cofmsg_error *msg =
@@ -1956,7 +1956,7 @@ crofdpt::send_experimenter_message(
 		if (not is_established()) {
 			rofl::logging::warn << "[rofl-common][crofdpt] "
 					<< "control channel not connected" << std::endl;
-			throw eRofBaseNotConnected();
+			throw eRofBaseNotConnected("");
 		}
 
 		xid = transactions.add_ta(timeout, rofl::openflow::OFPT_EXPERIMENTER);

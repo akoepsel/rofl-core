@@ -25,39 +25,36 @@
 	#include "endian_conversion.h"
 #endif
 
-#include "rofl/common/crofcore.h"
-#include "rofl/common/ciosrv.h"
 #include "rofl/common/croflexception.h"
-#include "rofl/common/csocket.h"
-#include "rofl/common/thread_helper.h"
-#include "rofl/common/logging.h"
+#include "rofl/common/cauxid.h"
 #include "rofl/common/crofdpt.h"
 #include "rofl/common/crofctl.h"
-#include "rofl/common/openflow/openflow.h"
-#include "rofl/common/openflow/cofhelloelemversionbitmap.h"
-#include "rofl/common/crandom.h"
 
 namespace rofl {
 
 
 /* error classes */
-class eRofBase                      : public RoflException {};   // base error class crofbase
-class eRofBaseIsBusy                : public eRofBase {}; // this FwdElem is already controlled
-class eRofBaseNotConnected          : public eRofBase {}; // this instance is not connected to the specified cofdpt/cofctl instance
-class eRofBaseNotImpl               : public eRofBase {}; // this FwdElem's method is not implemented
-class eRofBaseNoCtrl                : public eRofBase {}; // no controlling entity attached to this FwdElem
-class eRofBaseNotFound              : public eRofBase {}; // internal entity not found
-class eRofBaseInval                 : public eRofBase {}; // invalid parameter (e.g. invalid packet type)
-class eRofBaseNotAttached           : public eRofBase {}; // received command from entity being not attached
-class eRofBaseNoRequest             : public eRofBase {}; // no request packet found for session
-class eRofBaseXidInval              : public eRofBase {}; // invalid xid in session exchange
-class eRofBaseExists                : public eRofBase {}; // fwdelem with either this dpid or dpname already exists
-class eRofBaseOFportNotFound        : public eRofBase {}; // cofport instance not found
+class eRofBase                      : public RoflException {
+public:
+	eRofBase(const std::string& __arg) : RoflException(__arg) {};
+};
+class eRofBaseNotFound              : public eRofBase {
+public:
+	eRofBaseNotFound(const std::string& __arg) : eRofBase(__arg) {};
+};
+class eRofBaseNotConnected          : public eRofBase {
+public:
+	eRofBaseNotConnected(const std::string& __arg) : eRofBase(__arg) {};
+};
+class eRofBaseCongested             : public eRofBase {
+public:
+	eRofBaseCongested(const std::string& __arg) : eRofBase(__arg) {};
+};
+
+#if 0
 class eRofBaseTableNotFound         : public eRofBase {}; // flow-table not found (e.g. unknown table_id in flow_mod)
 class eRofBaseGotoTableNotFound     : public eRofBase {}; // table-id specified in OFPIT_GOTO_TABLE invalid
-class eRofBaseFspSupportDisabled    : public eRofBase {};
-class eRofBaseCongested             : public eRofBase {}; // control channel is congested, dropping messages
-
+#endif
 
 
 /**
@@ -98,21 +95,7 @@ class eRofBaseCongested             : public eRofBase {}; // control channel is 
  * @see crofctl
  * @see crofdpt
  */
-class crofbase :
-	public rofl::ciosrv,
-	public rofl::crofcore,
-	public rofl::csocket_env,
-	public rofl::crofconn_env,
-	public rofl::ctransactions_env,
-	public rofl::crofctl_env,
-	public rofl::crofdpt_env
-{
-	enum crofbase_event_t {
-		EVENT_NONE = 0,
-		EVENT_CHAN_ESTABLISHED = 1,
-		EVENT_CHAN_TERMINATED = 2,
-	};
-
+class crofbase {
 public:
 
 	/**
@@ -124,9 +107,7 @@ public:
 	 *
 	 * @param versionbitmap OpenFlow version bitmap for incoming connections
 	 */
-	crofbase(
-			const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap =
-					rofl::openflow::cofhello_elem_versionbitmap());
+	crofbase();
 
 	/**
 	 * @brief	crofbase destructor
@@ -137,22 +118,65 @@ public:
 	virtual
 	~crofbase();
 
+	/**
+	 * @brief	Set number of running running threads for revised openflow library
+	 */
+	void
+	set_num_of_workers(
+			unsigned int n);
+
 private:
 
 	/**
-	 *
+	 * @brief	Copy constructor => marked as private and thus blocked
 	 */
 	crofbase(
-			const crofbase& base) :
-				transactions(this)
+			const crofbase& base)
 	{ *this = base; };
 
 	/**
-	 *
+	 * @brief 	Assignment operator => maked as private and thus blocked
 	 */
 	crofbase&
 	operator= (
-			const crofbase& base);
+			const crofbase& base) {
+		if (this == &base)
+			return *this;
+		return *this;
+	};
+
+public:
+
+	/**
+	 * @name	Auxiliary methods
+	 */
+
+	/**
+	 * @brief	Returns reference to OpenFlow version bitmap used for incoming connections.
+	 */
+	rofl::openflow::cofhello_elem_versionbitmap&
+	set_versionbitmap();
+
+	/**
+	 * @brief 	Returns const reference to OpenFlow version bitmap used for incoming connections.
+	 */
+	const rofl::openflow::cofhello_elem_versionbitmap&
+	get_versionbitmap() const;
+
+	/**
+	 * @brief 	Returns highest OpenFlow version supported for incoming connections.
+	 */
+	uint8_t
+	get_highest_supported_ofp_version() const;
+
+	/**
+	 * @brief 	Returns true, when the given OpenFlow version is supported by this crofbase instance.
+	 */
+	bool
+	is_ofp_version_supported(
+			uint8_t ofp_version) const;
+
+	/**@}*/
 
 public:
 
@@ -166,14 +190,7 @@ public:
 	 * @brief	Closes all listening csocket instances.
 	 */
 	void
-	close_dpt_listening() {
-		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
-		for (std::map<unsigned int, csocket*>::iterator
-				it = dpt_sockets.begin(); it != dpt_sockets.end(); ++it) {
-			delete it->second;
-		}
-		dpt_sockets.clear();
-	};
+	close_dpt_listening();
 
 	/**
 	 * @brief	Creates a new listening rofl::csocket instance for accepting incoming OpenFlow connections.
@@ -186,16 +203,7 @@ public:
 	add_dpt_listening(
 			unsigned int sockid,
 			enum rofl::csocket::socket_type_t socket_type,
-			const rofl::cparams& params) {
-		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
-		if (dpt_sockets.find(sockid) != dpt_sockets.end()) {
-			delete dpt_sockets[sockid];
-			dpt_sockets.erase(sockid);
-		}
-		dpt_sockets[sockid] = csocket::csocket_factory(socket_type, this, crofcore::get_worker_thread_id());
-		dpt_sockets[sockid]->listen(params);
-		return *(dpt_sockets[sockid]);
-	};
+			const rofl::cparams& params);
 
 	/**
 	 * @brief	Returns a reference to the listening csocket object
@@ -209,14 +217,7 @@ public:
 	set_dpt_listening(
 			unsigned int sockid,
 			enum rofl::csocket::socket_type_t socket_type,
-			const rofl::cparams& params) {
-		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
-		if (dpt_sockets.find(sockid) == dpt_sockets.end()) {
-			dpt_sockets[sockid] = csocket::csocket_factory(socket_type, this, crofcore::get_worker_thread_id());
-			dpt_sockets[sockid]->listen(params);
-		}
-		return *(dpt_sockets[sockid]);
-	};
+			const rofl::cparams& params);
 
 	/**
 	 * @brief	Returns a const reference to the listening csocket object
@@ -226,13 +227,7 @@ public:
 	 */
 	const rofl::csocket&
 	get_dpt_listening(
-			unsigned int sockid) const {
-		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_READ);
-		if (dpt_sockets.find(sockid) == dpt_sockets.end()) {
-			throw eRofBaseNotFound();
-		}
-		return *(dpt_sockets.at(sockid));
-	};
+			unsigned int sockid) const;
 
 	/**
 	 * @brief	Removes a listening socket identified by sockid.
@@ -241,14 +236,7 @@ public:
 	 */
 	void
 	drop_dpt_listening(
-			unsigned int sockid) {
-		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_WRITE);
-		if (dpt_sockets.find(sockid) == dpt_sockets.end()) {
-			return;
-		}
-		delete dpt_sockets[sockid];
-		dpt_sockets.erase(sockid);
-	};
+			unsigned int sockid);
 
 	/**
 	 * @brief	Checks for existence of a listening socket identified by sockid.
@@ -257,10 +245,7 @@ public:
 	 */
 	bool
 	has_dpt_listening(
-			unsigned int sockid) {
-		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_READ);
-		return (not (dpt_sockets.find(sockid) == dpt_sockets.end()));
-	};
+			unsigned int sockid);
 
 	/**@}*/
 
@@ -276,14 +261,7 @@ public:
 	 * @brief	Closes all listening csocket instances.
 	 */
 	void
-	close_ctl_listening() {
-		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
-		for (std::map<unsigned int, csocket*>::iterator
-				it = ctl_sockets.begin(); it != ctl_sockets.end(); ++it) {
-			delete it->second;
-		}
-		ctl_sockets.clear();
-	};
+	close_ctl_listening();
 
 	/**
 	 * @brief	Creates a new listening rofl::csocket instance for accepting incoming OpenFlow connections.
@@ -296,16 +274,7 @@ public:
 	add_ctl_listening(
 			unsigned int sockid,
 			enum rofl::csocket::socket_type_t socket_type,
-			const rofl::cparams& params) {
-		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
-		if (ctl_sockets.find(sockid) != ctl_sockets.end()) {
-			delete ctl_sockets[sockid];
-			ctl_sockets.erase(sockid);
-		}
-		ctl_sockets[sockid] = csocket::csocket_factory(socket_type, this, crofcore::get_worker_thread_id());
-		ctl_sockets[sockid]->listen(params);
-		return *(ctl_sockets[sockid]);
-	};
+			const rofl::cparams& params);
 
 	/**
 	 * @brief	Returns a reference to the listening csocket object
@@ -319,14 +288,7 @@ public:
 	set_ctl_listening(
 			unsigned int sockid,
 			enum rofl::csocket::socket_type_t socket_type,
-			const rofl::cparams& params) {
-		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
-		if (ctl_sockets.find(sockid) == ctl_sockets.end()) {
-			ctl_sockets[sockid] = csocket::csocket_factory(socket_type, this, crofcore::get_worker_thread_id());
-			ctl_sockets[sockid]->listen(params);
-		}
-		return *(ctl_sockets[sockid]);
-	};
+			const rofl::cparams& params);
 
 	/**
 	 * @brief	Returns a const reference to the listening csocket object
@@ -336,13 +298,7 @@ public:
 	 */
 	const rofl::csocket&
 	get_ctl_listening(
-			unsigned int sockid) const {
-		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_READ);
-		if (ctl_sockets.find(sockid) == ctl_sockets.end()) {
-			throw eRofBaseNotFound();
-		}
-		return *(ctl_sockets.at(sockid));
-	};
+			unsigned int sockid) const;
 
 	/**
 	 * @brief	Removes a listening socket identified by sockid.
@@ -351,14 +307,7 @@ public:
 	 */
 	void
 	drop_ctl_listening(
-			unsigned int sockid) {
-		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_WRITE);
-		if (ctl_sockets.find(sockid) == ctl_sockets.end()) {
-			return;
-		}
-		delete ctl_sockets[sockid];
-		ctl_sockets.erase(sockid);
-	};
+			unsigned int sockid);
 
 	/**
 	 * @brief	Checks for existence of a listening socket identified by sockid.
@@ -367,10 +316,7 @@ public:
 	 */
 	bool
 	has_ctl_listening(
-			unsigned int sockid) {
-		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_READ);
-		return (not (ctl_sockets.find(sockid) == ctl_sockets.end()));
-	};
+			unsigned int sockid);
 
 	/**@}*/
 
@@ -390,26 +336,13 @@ public:
 	 * @return Next idle identifier for a rofl::crofdpt instance
 	 */
 	rofl::cdptid
-	get_idle_dptid() const {
-		uint64_t id = 0;
-		while (has_dpt(rofl::cdptid(id))) {
-			id++;
-		}
-		return rofl::cdptid(id);
-	};
+	get_idle_dptid() const;
 
 	/**
 	 * @brief	Deletes all existing rofl::crofdpt instances
 	 */
 	void
-	drop_dpts() {
-		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
-		for (std::map<rofl::cdptid, crofdpt*>::iterator
-				it = rofdpts.begin(); it != rofdpts.end(); ++it) {
-			delete it->second;
-		}
-		rofdpts.clear();
-	};
+	drop_dpts();
 
 	/**
 	 * @brief	Creates new rofl::crofdpt instance for given identifier
@@ -435,15 +368,7 @@ public:
 		const rofl::cdptid& dptid,
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap,
 		bool remove_on_channel_close = false,
-		const rofl::cdpid& dpid = rofl::cdpid(0)) {
-		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
-		if (rofdpts.find(dptid) != rofdpts.end()) {
-			delete rofdpts[dptid];
-			rofdpts.erase(dptid);
-		}
-		rofdpts[dptid] = new crofdpt(this, dptid, remove_on_channel_close, versionbitmap, dpid, crofcore::get_worker_thread_id());
-		return *(rofdpts[dptid]);
-	};
+		const rofl::cdpid& dpid = rofl::cdpid(0));
 
 	/**
 	 * @brief	Returns existing or creates new rofl::crofdpt instance for given identifier
@@ -466,13 +391,7 @@ public:
 		const rofl::cdptid& dptid,
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap,
 		bool remove_on_channel_close = false,
-		const rofl::cdpid& dpid = rofl::cdpid(0)) {
-		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
-		if (rofdpts.find(dptid) == rofdpts.end()) {
-			rofdpts[dptid] = new crofdpt(this, dptid, remove_on_channel_close, versionbitmap, dpid, crofcore::get_worker_thread_id());
-		}
-		return *(rofdpts[dptid]);
-	};
+		const rofl::cdpid& dpid = rofl::cdpid(0));
 
 	/**
 	 * @brief	Returns reference to existing rofl::crofdpt instance.
@@ -486,13 +405,7 @@ public:
 	 */
 	rofl::crofdpt&
 	set_dpt(
-			const rofl::cdptid& dptid) {
-		RwLock(rofdpts_rwlock, RwLock::RWLOCK_READ);
-		if (rofdpts.find(dptid) == rofdpts.end()) {
-			throw eRofBaseNotFound();
-		}
-		return *(rofdpts[dptid]);
-	};
+			const rofl::cdptid& dptid);
 
 	/**
 	 * @brief	Returns const reference to existing rofl::crofdpt instance.
@@ -506,13 +419,7 @@ public:
 	 */
 	const rofl::crofdpt&
 	get_dpt(
-			const rofl::cdptid& dptid) const {
-		RwLock(rofdpts_rwlock, RwLock::RWLOCK_READ);
-		if (rofdpts.find(dptid) == rofdpts.end()) {
-			throw eRofBaseNotFound();
-		}
-		return *(rofdpts.at(dptid));
-	};
+			const rofl::cdptid& dptid) const;
 
 	/**
 	 * @brief	Deletes a rofl::crofdpt instance given by identifier.
@@ -521,14 +428,7 @@ public:
 	 */
 	void
 	drop_dpt(
-		rofl::cdptid dptid) { // make a copy here, do not use a const reference
-		RwLock(rofdpts_rwlock, RwLock::RWLOCK_WRITE);
-		if (rofdpts.find(dptid) == rofdpts.end()) {
-			return;
-		}
-		delete rofdpts[dptid];
-		rofdpts.erase(dptid);
-	};
+		rofl::cdptid dptid);
 
 	/**
 	 * @brief	Checks for existence of rofl::crofdpt instance with given identifier
@@ -538,10 +438,7 @@ public:
 	 */
 	bool
 	has_dpt(
-		const rofl::cdptid& dptid) const {
-		RwLock(rofdpts_rwlock, RwLock::RWLOCK_READ);
-		return (not (rofdpts.find(dptid) == rofdpts.end()));
-	};
+		const rofl::cdptid& dptid) const;
 
 	/**@}*/
 
@@ -561,26 +458,13 @@ public:
 	 * @return Next idle identifier for a rofl::crofctl instance
 	 */
 	rofl::cctlid
-	get_idle_ctlid() const {
-		uint64_t id = 0;
-		while (has_ctl(rofl::cctlid(id))) {
-			id++;
-		}
-		return rofl::cctlid(id);
-	};
+	get_idle_ctlid() const;
 
 	/**
 	 * @brief	Deletes all existing rofl::crofctl instances
 	 */
 	void
-	drop_ctls() {
-		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
-		for (std::map<rofl::cctlid, crofctl*>::iterator
-				it = rofctls.begin(); it != rofctls.end(); ++it) {
-			delete it->second;
-		}
-		rofctls.clear();
-	};
+	drop_ctls();
 
 	/**
 	 * @brief	Creates new rofl::crofctl instance for given identifier
@@ -604,15 +488,7 @@ public:
 	add_ctl(
 		const rofl::cctlid& ctlid,
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap,
-		bool remove_on_channel_close = false) {
-		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
-		if (rofctls.find(ctlid) != rofctls.end()) {
-			delete rofctls[ctlid];
-			rofctls.erase(ctlid);
-		}
-		rofctls[ctlid] = new crofctl(this, ctlid, remove_on_channel_close, versionbitmap, crofcore::get_worker_thread_id());
-		return *(rofctls[ctlid]);
-	};
+		bool remove_on_channel_close = false);
 
 	/**
 	 * @brief	Returns existing or creates new rofl::crofctl instance for given identifier
@@ -633,13 +509,7 @@ public:
 	set_ctl(
 		const rofl::cctlid& ctlid,
 		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap,
-		bool remove_on_channel_close = false) {
-		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
-		if (rofctls.find(ctlid) == rofctls.end()) {
-			rofctls[ctlid] = new crofctl(this, ctlid, remove_on_channel_close, versionbitmap, crofcore::get_worker_thread_id());
-		}
-		return *(rofctls[ctlid]);
-	};
+		bool remove_on_channel_close = false);
 
 	/**
 	 * @brief	Returns reference to existing rofl::crofctl instance.
@@ -653,13 +523,7 @@ public:
 	 */
 	rofl::crofctl&
 	set_ctl(
-			const rofl::cctlid& ctlid) {
-		RwLock(rofctls_rwlock, RwLock::RWLOCK_READ);
-		if (rofctls.find(ctlid) == rofctls.end()) {
-			throw eRofBaseNotFound();
-		}
-		return *(rofctls[ctlid]);
-	};
+			const rofl::cctlid& ctlid);
 
 	/**
 	 * @brief	Returns const reference to existing rofl::crofctl instance.
@@ -673,13 +537,7 @@ public:
 	 */
 	const rofl::crofctl&
 	get_ctl(
-			const rofl::cctlid& ctlid) const {
-		RwLock(rofctls_rwlock, RwLock::RWLOCK_READ);
-		if (rofctls.find(ctlid) == rofctls.end()) {
-			throw eRofBaseNotFound();
-		}
-		return *(rofctls.at(ctlid));
-	};
+			const rofl::cctlid& ctlid) const;
 
 	/**
 	 * @brief	Deletes a rofl::crofctl instance given by identifier.
@@ -688,14 +546,7 @@ public:
 	 */
 	void
 	drop_ctl(
-		rofl::cctlid ctlid) { // make a copy here, do not use a const reference
-		RwLock(rofctls_rwlock, RwLock::RWLOCK_WRITE);
-		if (rofctls.find(ctlid) == rofctls.end()) {
-			return;
-		}
-		delete rofctls[ctlid];
-		rofctls.erase(ctlid);
-	};
+		rofl::cctlid ctlid);
 
 	/**
 	 * @brief	Checks for existence of rofl::crofctl instance with given identifier
@@ -705,82 +556,102 @@ public:
 	 */
 	bool
 	has_ctl(
-		const rofl::cctlid& ctlid) const {
-		RwLock(rofctls_rwlock, RwLock::RWLOCK_READ);
-		return (not (rofctls.find(ctlid) == rofctls.end()));
-	};
+		const rofl::cctlid& ctlid) const;
 
 	/**@}*/
 
 public:
 
 	/**
-	 * @name	Auxiliary methods
+	 * @name	Methods for sending asynchronous messages towards a controller entity.
+	 *
+	 * This group of methods allows an entity acting in datapath role to send
+	 * asynchronous OpenFlow messages towards a group of controller entities
+	 * based on their roles as defined in OpenFlow. This includes message transmission
+	 * based on individual controller modes like master, slave and equal and
+	 * the asynchronous configuration defining the set of messages sent towards
+	 * each controller. rofl-common maintains these roles automatically within
+	 * rofl::crofctl instances based on OpenFlow Role-Request message received
+	 * from the control plane.
 	 */
 
 	/**@{*/
 
 	/**
-	 * @brief	Returns OpenFlow's NO_BUFFER constant for various OpenFlow versions.
+	 * @brief	Sends OpenFlow Packet-In message to controller entity.
+	 *
+	 * @param auxid controller connection identifier
+	 * @param buffer_id OpenFlow buffer identifier where this packet is stored in
+	 * @param total_len total length of buffer stored on datapath element
+	 * @param reason one of OpenFlow's OFPR constants specifying the reason for sending a packet-in
+	 * @param table_id identifier of OpenFlow table emitting the packet-in event
+	 * @param cookie cookie of flow-table entry emitting the packet-in event
+	 * @param in_port port where packet causing this packet-in event was received (OpenFlow 1.0 only)
+	 * @param match set of OpenFlow matches generated by the datapath element's packet parser
+	 * @param data pointer to start of data buffer containing the packet
+	 * @param datalen length of  data buffer containing the packet
+	 * @throws eRofBaseNotConnected
 	 */
-	static uint32_t
-	get_ofp_no_buffer(
-			uint8_t ofp_version);
+	void
+	send_packet_in_message(
+			const rofl::cauxid& auxid,
+			uint32_t buffer_id,
+			uint16_t total_len,
+			uint8_t reason,
+			uint8_t table_id,
+			uint64_t cookie,
+			uint16_t in_port, // for OF1.0
+			rofl::openflow::cofmatch &match,
+			uint8_t *data,
+			size_t datalen);
 
 	/**
-	 * @brief	Returns OpenFlow's OFPP_CONTROLLER constant for various OpenFlow versions.
+	 * @brief	Sends OpenFlow Flow-Removed message to controller entity.
+	 *
+	 * @param auxid controller connection identifier
+	 * @param match set of OpenFlow matches generated by the datapath element's packet parser
+	 * @param cookie cookie of flow-table entry emitting the flow-removed event
+	 * @param priority priority of flow-table entry emitting the flow-removed event
+	 * @param reason one of OpenFlow's OFPRR constants specifying the reason for sending a flow-removed
+	 * @param table_id identifier of OpenFlow table emitting the flow-removed event
+	 * @param duration_sec overall lifetime of this flow-table entry (seconds)
+	 * @param duration_nsec overall lifetime of this flow-table entry (nseconds)
+	 * @param idle_timeout idle_timeout of flow-table entry emitting the flow-removed event
+	 * @param hard_timeout hard_timeout of flow-table entry emitting the flow-removed event
+	 * @param packet_count number of packets that traversed this flow-table entry emitting the flow-removed event
+	 * @param byte_count number of bytes that traversed this flow-table entry emitting the flow-removed event
 	 */
-	static uint32_t
-	get_ofp_controller_port(
-			uint8_t ofp_version);
+	void
+	send_flow_removed_message(
+			const rofl::cauxid& auxid,
+			rofl::openflow::cofmatch& match,
+			uint64_t cookie,
+			uint16_t priority,
+			uint8_t reason,
+			uint8_t table_id,
+			uint32_t duration_sec,
+			uint32_t duration_nsec,
+			uint16_t idle_timeout,
+			uint16_t hard_timeout,
+			uint64_t packet_count,
+			uint64_t byte_count);
 
 	/**
-	 * @brief 	Returns OpenFlow's OFPP_FLOOD constant for various OpenFlow versions.
+	 * @brief	Sends OpenFlow Port-Status message to controller entity.
+	 *
+	 * @param auxid controller connection identifier
+	 * @param reason one of OpenFlow's OFPPR constants specifying the reason for sending a port-status
+	 * @param port cofport instance definine the port's properties
 	 */
-	static uint32_t
-	get_ofp_flood_port(
-			uint8_t ofp_version);
-
-	/**
-	 * @brief	Returns OpenFlow's OFPFC constants for various OpenFlow versions.
-	 */
-	static uint8_t
-	get_ofp_command(
-			uint8_t ofp_version,
-			const enum openflow::ofp_flow_mod_command& cmd);
-
-	/**
-	 * @brief	Returns reference to OpenFlow version bitmap used for incoming connections.
-	 */
-	rofl::openflow::cofhello_elem_versionbitmap&
-	set_versionbitmap()
-	{ return versionbitmap; };
-
-	/**
-	 * @brief 	Returns const reference to OpenFlow version bitmap used for incoming connections.
-	 */
-	const rofl::openflow::cofhello_elem_versionbitmap&
-	get_versionbitmap() const
-	{ return versionbitmap; };
-
-	/**
-	 * @brief 	Returns highest OpenFlow version supported for incoming connections.
-	 */
-	uint8_t
-	get_highest_supported_ofp_version() const
-	{ return versionbitmap.get_highest_ofp_version(); };
-
-	/**
-	 * @brief 	Returns true, when the given OpenFlow version is supported by this crofbase instance.
-	 */
-	bool
-	is_ofp_version_supported(
-			uint8_t ofp_version) const
-	{ return versionbitmap.has_ofp_version(ofp_version); };
+	void
+	send_port_status_message(
+			const rofl::cauxid& auxid,
+			uint8_t reason,
+			const rofl::openflow::cofport& port);
 
 	/**@}*/
 
-protected:
+public:
 
 	/**
 	 * @name 	Event handlers for management notifications for datapath elements
@@ -919,7 +790,7 @@ protected:
 
 	/**@}*/
 
-protected:
+public:
 
 	/**
 	 * @name 	Event handlers for management notifications for controller entities
@@ -1058,7 +929,7 @@ protected:
 
 	/**@}*/
 
-protected:
+public:
 
 	/**
 	 * @name 	Event handlers for OpenFlow message notifications received from datapath elements
@@ -1799,7 +1670,7 @@ protected:
 
 	/**@}*/
 
-protected:
+public:
 
 	/**
 	 * @name 	Event handlers for OpenFlow message notifications received from controller entities
@@ -2269,399 +2140,17 @@ protected:
 
 	/**@}*/
 
-protected:
-
-	/**
-	 * @name	Methods for sending asynchronous messages towards a controller entity.
-	 *
-	 * This group of methods allows an entity acting in datapath role to send
-	 * asynchronous OpenFlow messages towards a group of controller entities
-	 * based on their roles as defined in OpenFlow. This includes message transmission
-	 * based on individual controller modes like master, slave and equal and
-	 * the asynchronous configuration defining the set of messages sent towards
-	 * each controller. rofl-common maintains these roles automatically within
-	 * rofl::crofctl instances based on OpenFlow Role-Request message received
-	 * from the control plane.
-	 */
-
-	/**@{*/
-
-	/**
-	 * @brief	Sends OpenFlow Packet-In message to controller entity.
-	 *
-	 * @param auxid controller connection identifier
-	 * @param buffer_id OpenFlow buffer identifier where this packet is stored in
-	 * @param total_len total length of buffer stored on datapath element
-	 * @param reason one of OpenFlow's OFPR constants specifying the reason for sending a packet-in
-	 * @param table_id identifier of OpenFlow table emitting the packet-in event
-	 * @param cookie cookie of flow-table entry emitting the packet-in event
-	 * @param in_port port where packet causing this packet-in event was received (OpenFlow 1.0 only)
-	 * @param match set of OpenFlow matches generated by the datapath element's packet parser
-	 * @param data pointer to start of data buffer containing the packet
-	 * @param datalen length of  data buffer containing the packet
-	 * @throws eRofBaseNotConnected
-	 */
-	void
-	send_packet_in_message(
-			const rofl::cauxid& auxid,
-			uint32_t buffer_id,
-			uint16_t total_len,
-			uint8_t reason,
-			uint8_t table_id,
-			uint64_t cookie,
-			uint16_t in_port, // for OF1.0
-			rofl::openflow::cofmatch &match,
-			uint8_t *data,
-			size_t datalen);
-
-	/**
-	 * @brief	Sends OpenFlow Flow-Removed message to controller entity.
-	 *
-	 * @param auxid controller connection identifier
-	 * @param match set of OpenFlow matches generated by the datapath element's packet parser
-	 * @param cookie cookie of flow-table entry emitting the flow-removed event
-	 * @param priority priority of flow-table entry emitting the flow-removed event
-	 * @param reason one of OpenFlow's OFPRR constants specifying the reason for sending a flow-removed
-	 * @param table_id identifier of OpenFlow table emitting the flow-removed event
-	 * @param duration_sec overall lifetime of this flow-table entry (seconds)
-	 * @param duration_nsec overall lifetime of this flow-table entry (nseconds)
-	 * @param idle_timeout idle_timeout of flow-table entry emitting the flow-removed event
-	 * @param hard_timeout hard_timeout of flow-table entry emitting the flow-removed event
-	 * @param packet_count number of packets that traversed this flow-table entry emitting the flow-removed event
-	 * @param byte_count number of bytes that traversed this flow-table entry emitting the flow-removed event
-	 */
-	void
-	send_flow_removed_message(
-			const rofl::cauxid& auxid,
-			rofl::openflow::cofmatch& match,
-			uint64_t cookie,
-			uint16_t priority,
-			uint8_t reason,
-			uint8_t table_id,
-			uint32_t duration_sec,
-			uint32_t duration_nsec,
-			uint16_t idle_timeout,
-			uint16_t hard_timeout,
-			uint64_t packet_count,
-			uint64_t byte_count);
-
-	/**
-	 * @brief	Sends OpenFlow Port-Status message to controller entity.
-	 *
-	 * @param auxid controller connection identifier
-	 * @param reason one of OpenFlow's OFPPR constants specifying the reason for sending a port-status
-	 * @param port cofport instance definine the port's properties
-	 */
-	void
-	send_port_status_message(
-			const rofl::cauxid& auxid,
-			uint8_t reason,
-			const rofl::openflow::cofport& port);
-
-	/**@}*/
-
 public:
 
 	friend std::ostream&
 	operator<< (std::ostream& os, crofbase const& rofbase) {
 		os << "<crofbase >" << std::endl;
-		for (std::map<cctlid, crofctl*>::const_iterator
-				it = rofbase.rofctls.begin(); it != rofbase.rofctls.end(); ++it) {
-			rofl::indent i(2);
-			os << it->first;
-		}
-		for (std::map<cdptid, crofdpt*>::const_iterator
-				it = rofbase.rofdpts.begin(); it != rofbase.rofdpts.end(); ++it) {
-			rofl::indent i(2);
-			os << it->first;
-		}
+
 		return os;
 	};
 
-private:
-
-	virtual void
-	role_request_rcvd(
-			rofl::crofctl& ctl,
-			uint32_t role,
-			uint64_t rcvd_generation_id);
-
-private:
-
-	virtual void
-	handle_connect_refused(
-			crofconn& conn);
-
-	virtual void
-	handle_connect_failed(
-			crofconn& conn);
-
-	virtual void
-	handle_connected(
-			crofconn& conn,
-			uint8_t ofp_version);
-
-	virtual void
-	handle_closed(
-			crofconn& conn)
-	{};
-
-	virtual void
-	handle_write(
-			crofconn& conn)
-	{};
-
-	virtual void
-	recv_message(
-			crofconn& conn,
-			rofl::openflow::cofmsg *msg)
-	{ delete msg; };
-
-	virtual uint32_t
-	get_async_xid(
-			crofconn& conn)
-	{ return transactions.get_async_xid(); };
-
-	virtual uint32_t
-	get_sync_xid(
-			crofconn& conn,
-			uint8_t msg_type = 0,
-			uint16_t msg_sub_type = 0)
-	{ return transactions.add_ta(cclock(5, 0), msg_type, msg_sub_type); };
-
-	virtual void
-	release_sync_xid(
-			crofconn& conn,
-			uint32_t xid)
-	{ transactions.drop_ta(xid); };
-
-private:
-
-	virtual void
-	ta_expired(ctransactions& tas, ctransaction& ta)
-	{};
-
-private:
-
-	virtual void
-	handle_listen(
-			csocket& socket,
-			int newsd);
-
-	virtual void
-	handle_accepted(
-			csocket& socket)
-	{ /*  do nothing here */ };
-
-	virtual void
-	handle_accept_refused(
-			csocket& socket)
-	{ /*  do nothing here */ };
-
-	virtual void
-	handle_connected(
-			csocket& socket)
-	{ /*  do nothing here */ };
-
-	virtual void
-	handle_connect_refused(
-			csocket& socket)
-	{ /*  do nothing here */ };
-
-	virtual void
-	handle_connect_failed(
-			csocket& socket)
-	{ /*  do nothing here */ };
-
-	virtual void
-	handle_read(
-			csocket& socket)
-	{ /*  do nothing here */ };
-
-	virtual void
-	handle_write(
-			csocket& socket)
-	{ /*  do nothing here */ };
-
-	virtual void
-	handle_closed(
-			csocket& socket);
-
-private:
-
-	bool
-	is_dpt_listening(
-			csocket& socket) const {
-		RwLock(dpt_sockets_rwlock, RwLock::RWLOCK_READ);
-		for (std::map<unsigned int, csocket*>::const_iterator
-				it = dpt_sockets.begin(); it != dpt_sockets.end(); ++it) {
-			if (it->second == &socket) {
-				return true;
-			}
-		}
-		return false;
-	};
-
-	bool
-	is_ctl_listening(
-			csocket& socket) const {
-		RwLock(ctl_sockets_rwlock, RwLock::RWLOCK_READ);
-		for (std::map<unsigned int, csocket*>::const_iterator
-				it = ctl_sockets.begin(); it != ctl_sockets.end(); ++it) {
-			if (it->second == &socket) {
-				return true;
-			}
-		}
-		return false;
-	};
-
-	void
-	drop_dpt_listening(
-			csocket& socket) {
-		for (std::map<unsigned int, csocket*>::const_iterator
-				it = dpt_sockets.begin(); it != dpt_sockets.end(); ++it) {
-			if (it->second == &socket) {
-				drop_dpt_listening(it->first); return;
-			}
-		}
-	};
-
-	void
-	drop_ctl_listening(
-			csocket& socket) {
-		for (std::map<unsigned int, csocket*>::const_iterator
-				it = ctl_sockets.begin(); it != ctl_sockets.end(); ++it) {
-			if (it->second == &socket) {
-				drop_ctl_listening(it->first); return;
-			}
-		}
-	};
-
-public:
-
-	virtual void
-	handle_chan_established(
-			crofdpt& dpt) {
-		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
-		dpts_chan_established.push_back(dpt.get_dptid());
-		rofl::ciosrv::notify(rofl::cevent(EVENT_CHAN_ESTABLISHED));
-	};
-
-	virtual void
-	handle_chan_terminated(
-			crofdpt& dpt) {
-		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
-		dpts_chan_terminated.push_back(dpt.get_dptid());
-		rofl::ciosrv::notify(rofl::cevent(EVENT_CHAN_TERMINATED));
-	};
-
-	virtual void
-	handle_chan_established(
-			crofctl& ctl) {
-		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
-		ctls_chan_established.push_back(ctl.get_ctlid());
-		rofl::ciosrv::notify(rofl::cevent(EVENT_CHAN_ESTABLISHED));
-	};
-
-	virtual void
-	handle_chan_terminated(
-			crofctl& ctl) {
-		RwLock(chans_rwlock, RwLock::RWLOCK_WRITE);
-		ctls_chan_terminated.push_back(ctl.get_ctlid());
-		rofl::ciosrv::notify(rofl::cevent(EVENT_CHAN_TERMINATED));
-	};
-
-#if 0
-	virtual void
-	handle_chan_established(
-			crofdpt& dpt)
-	{ handle_dpt_open(dpt); };
-
-	virtual void
-	handle_chan_terminated(
-			crofdpt& dpt) {
-		rofl::cdptid dptid = dpt.get_dptid();
-		// destroy crofdpt object, when is was created upon an incoming connection from a peer entity
-		if (dpt.remove_on_channel_termination()) {
-			drop_dpt(dptid);
-		}
-		handle_dpt_close(dptid);
-	};
-
-	virtual void
-	handle_chan_established(
-			crofctl& ctl)
-	{ handle_ctl_open(ctl); };
-
-	virtual void
-	handle_chan_terminated(
-			crofctl& ctl) {
-		rofl::cctlid ctlid = ctl.get_ctlid();
-		// destroy crofctl object, when is was created upon an incoming connection from a peer entity
-		if (ctl.remove_on_channel_termination()) {
-			drop_ctl(ctlid);
-		}
-		handle_ctl_close(ctlid);
-	};
-#endif
-
-private:
-
-	virtual void
-	handle_event(
-			const cevent& event);
-
-	void
-	work_on_eventqueue(
-			enum crofbase_event_t event = EVENT_NONE);
-
-	void
-	event_chan_established();
-
-	void
-	event_chan_terminated();
-
-private:
-
-	/**< set of active controller connections */
-	std::map<cctlid, crofctl*>		rofctls;
-	mutable PthreadRwLock           rofctls_rwlock;
-	/**< set of active data path connections */
-	std::map<cdptid, crofdpt*>		rofdpts;
-	mutable PthreadRwLock           rofdpts_rwlock;
-	/**< listening sockets for incoming connections from datapath elements */
-	std::map<unsigned int, csocket*>
-									dpt_sockets;
-	mutable PthreadRwLock           dpt_sockets_rwlock;
-	/**< listening sockets for incoming connections from controller entities */
-	std::map<unsigned int, csocket*>
-									ctl_sockets;
-	mutable PthreadRwLock           ctl_sockets_rwlock;
-
-	mutable PthreadRwLock           chans_rwlock;
-
-	/**< list of ctl/dpt identifiers with channel going up */
-	std::deque<rofl::cctlid>		ctls_chan_established;
-	std::deque<rofl::cdptid>		dpts_chan_established;
-
-	/**< list of ctl/dpt identifiers with channel going down */
-	std::deque<rofl::cctlid>		ctls_chan_terminated;
-	std::deque<rofl::cdptid>		dpts_chan_terminated;
-
-	// supported OpenFlow versions
-	rofl::openflow::cofhello_elem_versionbitmap
-									versionbitmap;
-	// pending OpenFlow transactions
-	ctransactions					transactions;
-	// generation_id used for roles initially defined?
-	bool							generation_is_defined;
-	// cached generation_id as defined by OpenFlow
-	uint64_t						cached_generation_id;
-
-	std::bitset<32>					flags;
-
-	std::deque<enum crofbase_event_t>	events;
 };
+
 
 }; // end of namespace
 

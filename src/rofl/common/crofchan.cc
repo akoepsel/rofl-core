@@ -328,7 +328,7 @@ crofchan::send_message(
 	cwnd_size = conns[aux_id]->send_message(msg);
 
 	if (cwnd_size == 0) {
-		throw eRofBaseCongested();
+		throw eRofBaseCongested("rofl::crofchan::send_message() congestion occured");
 	}
 
 	return cwnd_size;
