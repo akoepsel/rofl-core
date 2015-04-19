@@ -25,6 +25,7 @@
 	#include "endian_conversion.h"
 #endif
 
+#include "rofl/common/openflow/cofhelloelemversionbitmap.h"
 #include "rofl/common/croflexception.h"
 #include "rofl/common/cauxid.h"
 #include "rofl/common/crofdpt.h"
@@ -107,7 +108,8 @@ public:
 	 *
 	 * @param versionbitmap OpenFlow version bitmap for incoming connections
 	 */
-	crofbase();
+	crofbase(const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap
+			= rofl::openflow::cofhello_elem_versionbitmap());
 
 	/**
 	 * @brief	crofbase destructor

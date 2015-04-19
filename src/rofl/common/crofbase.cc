@@ -7,9 +7,11 @@
 
 using namespace rofl;
 
-crofbase::crofbase()
+crofbase::crofbase(
+		const rofl::openflow::cofhello_elem_versionbitmap& versionbitmap)
 {
 	rofl::crofcore::register_rofbase(this);
+	rofl::crofcore::set_rofcore(this).set_versionbitmap() = versionbitmap;
 };
 
 
