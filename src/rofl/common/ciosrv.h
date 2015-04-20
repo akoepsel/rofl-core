@@ -890,17 +890,10 @@ public:
 	 * @param ev the event to be sent to this instance
 	 */
 	void
-	notify(const cevent& event) {
+	notify(
+			const rofl::cevent& event) {
 		if (not rofl::cioloop::has_loop(get_thread_id()))
 			return;
-		std::cerr << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX this:"
-					<< std::hex << (long)this << std::dec << std::endl;
-			std::cerr << rofl::cioloop::show_all_cioloops(std::cerr) << std::endl;
-			std::cerr << rofl::cioloop(get_thread_id()) << std::endl;
-#if 0
-		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
-			return;
-#endif
 		events.add_event(event);
 		rofl::cioloop::get_loop(get_thread_id()).has_event(this);
 	};
@@ -959,7 +952,8 @@ protected:
 	 * @param fd write event occured on file descriptor fd
 	 */
 	virtual void
-	handle_wevent(int fd)
+	handle_wevent(
+			int fd)
 	{};
 
 	/**
@@ -970,7 +964,8 @@ protected:
 	 * @param fd exception occured on file descriptor fd
 	 */
 	virtual void
-	handle_xevent(int fd)
+	handle_xevent(
+			int fd)
 	{};
 
 	/**
@@ -982,7 +977,8 @@ protected:
 	 * @param data pointer to opaque data
 	 */
 	virtual void
-	handle_timeout(int opaque, void *data = (void*)0)
+	handle_timeout(
+			int opaque, void *data = (void*)0)
 	{};
 
 	/**@}*/
@@ -1004,10 +1000,8 @@ protected:
 	 */
 	void
 	register_filedesc_r(int fd) {
-#if 0
-		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+		if (not rofl::cioloop::has_loop(get_thread_id()))
 			return;
-#endif
 		RwLock lock(rfds_rwlock, RwLock::RWLOCK_WRITE);
 		rfds.insert(fd);
 		rofl::cioloop::get_loop(get_thread_id()).add_readfd(this, fd);
@@ -1020,10 +1014,8 @@ protected:
 	 */
 	void
 	deregister_filedesc_r(int fd) {
-#if 0
-		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+		if (not rofl::cioloop::has_loop(get_thread_id()))
 			return;
-#endif
 		RwLock lock(rfds_rwlock, RwLock::RWLOCK_WRITE);
 		rfds.erase(fd);
 		rofl::cioloop::get_loop(get_thread_id()).drop_readfd(this, fd);
@@ -1038,10 +1030,8 @@ protected:
 	 */
 	void
 	register_filedesc_w(int fd) {
-#if 0
-		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+		if (not rofl::cioloop::has_loop(get_thread_id()))
 			return;
-#endif
 		RwLock lock(wfds_rwlock, RwLock::RWLOCK_WRITE);
 		wfds.insert(fd);
 		rofl::cioloop::get_loop(get_thread_id()).add_writefd(this, fd);
@@ -1054,10 +1044,8 @@ protected:
 	 */
 	void
 	deregister_filedesc_w(int fd) {
-#if 0
-		if (not rofl::cioloop(get_thread_id()).has_ciosrv(this))
+		if (not rofl::cioloop::has_loop(get_thread_id()))
 			return;
-#endif
 		RwLock lock(wfds_rwlock, RwLock::RWLOCK_WRITE);
 		wfds.erase(fd);
 		rofl::cioloop::get_loop(get_thread_id()).drop_writefd(this, fd);
