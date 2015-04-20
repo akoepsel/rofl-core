@@ -25,7 +25,7 @@ cworkflow_test::setUp()
 #ifdef DEBUG
 	rofl::logging::set_debug_level(7);
 #endif
-	rofl::logging::set_debug_level(8);
+	rofl::logging::set_debug_level(10);
 
 	int openflow_bind_portno = 6653;
 	rofl::csocket::socket_type_t socket_type = rofl::csocket::SOCKET_TYPE_PLAIN;
@@ -48,6 +48,7 @@ cworkflow_test::setUp()
 		ctls[i]->set_versionbitmap().add_ofp_version(rofl::openflow13::OFP_VERSION);
 		ctls[i]->add_dpt_listening(i, socket_type, socket_params);
 	}
+
 	for (int i = 0; i < num_of_dpts; i++) {
 
 		dpts[i] = new datapath_t(/*dpid*/i, 1024, 8, 0);
@@ -73,6 +74,7 @@ void
 cworkflow_test::tearDown()
 {
 	std::cerr << "terminating workflow test ..." << std::endl;
+
 	for (std::map<unsigned int, datapath_t*>::iterator
 			it = dpts.begin(); it != dpts.end(); ++it) {
 		delete it->second;
@@ -104,6 +106,24 @@ cworkflow_test::testRoflImpl()
 		--cnt;
 	}
 	std::cerr << std::endl;
+}
+
+
+
+void
+datapath_t::handle_ctl_open(
+		rofl::crofctl& ctl)
+{
+	std::cerr << "dpt: " << "ADD ctl: " << ctl.str() << std::endl;
+}
+
+
+
+void
+datapath_t::handle_ctl_close(
+		const rofl::cctlid& ctlid)
+{
+	std::cerr << "dpt: " << "DROP ctl: " << ctlid.str() << std::endl;
 }
 
 

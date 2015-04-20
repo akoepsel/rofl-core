@@ -13,16 +13,6 @@
 #include <cppunit/TestFixture.h>
 #include <cppunit/extensions/HelperMacros.h>
 
-void*
-run_thread(void* arg) {
-
-	pthread_t tid = pthread_self();
-
-	std::cout << (int)tid << std::endl;
-
-	return NULL;
-};
-
 
 class controller_t : public rofl::crofbase {
 public:
@@ -56,6 +46,12 @@ public:
 	~datapath_t()
 	{};
 public:
+	virtual void
+	handle_ctl_open(
+			rofl::crofctl& ctl);
+	virtual void
+	handle_ctl_close(
+			const rofl::cctlid& ctlid);
 	virtual void
 	handle_features_request(
 			rofl::crofctl& ctl,

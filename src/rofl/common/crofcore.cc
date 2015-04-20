@@ -32,7 +32,8 @@ crofcore::initialize(
 		unsigned int workers_num)
 {
 #ifndef NDEBUG
-	rofl::logging::debug3 << "[rofl-common][crofcore][initialize] starting " << workers_num << " worker threads" << std::endl;
+	rofl::logging::trace << "[rofl-common][crofcore][initialize] starting "
+			<< workers_num << " worker threads" << std::endl;
 #endif
 
 	workers_num = (0 == workers_num) ? 1 : workers_num;
@@ -51,7 +52,7 @@ crofcore::initialize(
 	crofcore::initialized = true;
 
 #ifndef NDEBUG
-	rofl::logging::debug3 << "[rofl-common][crofcore][initialize] running" << std::endl;
+	rofl::logging::trace << "[rofl-common][crofcore][initialize] running" << std::endl;
 #endif
 }
 
@@ -62,7 +63,7 @@ void
 crofcore::terminate()
 {
 #ifndef NDEBUG
-	rofl::logging::debug3 << "[rofl-common][crofcore][terminate] removing worker threads" << std::endl;
+	rofl::logging::trace << "[rofl-common][crofcore][terminate] removing worker threads" << std::endl;
 #endif
 
 	RwLock(workers_rwlock, RwLock::RWLOCK_WRITE);
@@ -98,12 +99,10 @@ crofcore::terminate()
 	}
 	crofcore::rofcores_term.clear();
 
-	rofl::cioloop::get_loop().shutdown();
-
-	rofl::cioloop::get_loop().cleanup_on_exit();
+	crofcore::next_worker_id = 0;
 
 #ifndef NDEBUG
-	rofl::logging::debug3 << "[rofl-common][crofcore][terminate] done" << std::endl;
+	rofl::logging::trace << "[rofl-common][crofcore][terminate] done" << std::endl;
 #endif
 }
 

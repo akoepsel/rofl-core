@@ -150,12 +150,21 @@ private:
 	crofcore(
 			crofbase* env,
 			pthread_t tid) :
+				ciosrv(tid),
 				rofbase(env),
 				rofcore_tid(tid),
 				transactions(this, tid),
 				generation_is_defined(false),
 				cached_generation_id((uint64_t)((int64_t)-1))
-	{};
+	{
+#ifndef NDEBUG
+		rofl::logging::trace << "[rofl-common][crofcore] new crofcore "
+				<< "this: " << std::hex << this << std::dec << " "
+				<< "target tid: 0x" << std::hex << rofcore_tid << std::dec << " "
+				<< "running tid: 0x" << std::hex << pthread_self() << std::dec << " "
+				<< std::endl;
+#endif
+	};
 
 	/**
 	 * @brief	crofcore destructor
@@ -163,6 +172,14 @@ private:
 	 */
 	virtual
 	~crofcore() {
+#ifndef NDEBUG
+		rofl::logging::trace << "[rofl-common][crofcore] delete crofcore "
+				<< "this: " << std::hex << this << std::dec << " "
+				<< "target tid: 0x" << std::hex << rofcore_tid << std::dec << " "
+				<< "running tid: 0x" << std::hex << pthread_self() << std::dec << " "
+				<< std::endl;
+#endif
+
 		// close the listening sockets
 		close_dpt_listening();
 		close_ctl_listening();
