@@ -117,6 +117,7 @@ crofchan::add_conn(
 		// create new main connection
 		conns[auxid] = new crofconn(this, vbitmap, get_thread_id());
 		conns[auxid]->connect(auxid, socket_type, socket_params);
+		conns_backoff_reset[auxid] = false;
 
 		return *(conns[auxid]);
 
@@ -144,6 +145,7 @@ crofchan::add_conn(
 
 		conns[auxid] = new crofconn(this, vbitmap, get_thread_id());
 		conns[auxid]->connect(auxid, socket_type, socket_params);
+		conns_backoff_reset[auxid] = false;
 
 		return *(conns[auxid]);
 	}
@@ -189,6 +191,7 @@ crofchan::add_conn(
 		// create new main connection
 		conns[auxid] = conn;
 		conns[auxid]->set_env(this);
+		conns_backoff_reset[auxid] = false;
 
 		handle_connected(*conns[auxid], conns[auxid]->get_version());
 
@@ -216,6 +219,7 @@ crofchan::add_conn(
 
 		conns[auxid] = conn;
 		conns[auxid]->set_env(this);
+		conns_backoff_reset[auxid] = false;
 
 		handle_connected(*conns[auxid], conns[auxid]->get_version());
 
@@ -283,6 +287,7 @@ crofchan::drop_conn(
 			delete it->second;
 		}
 		conns.clear();
+		conns_backoff_reset.clear();
 
 	// auxiliary connection
 	} else {
@@ -291,6 +296,7 @@ crofchan::drop_conn(
 
 		delete conns[auxid];
 		conns.erase(auxid);
+		conns_backoff_reset.erase(auxid);
 	}
 }
 
@@ -430,6 +436,8 @@ crofchan::event_conn_established()
 		if (conns.find(auxid) == conns.end())
 			continue;
 
+		conns_backoff_reset[auxid] = true;
+
 		if (rofl::cauxid(0) == auxid) {
 			this->ofp_version = conns[auxid]->get_version();
 
@@ -491,6 +499,8 @@ crofchan::event_conn_terminated()
 		if (conns.find(auxid) == conns.end())
 			continue;
 
+		conns_backoff_reset[auxid] = true;
+
 		rofl::logging::info << "[rofl-common][crofchan] "
 				<< "auxid: " << it->str() << " -conn-terminated- " << str() << std::endl;
 
@@ -515,7 +525,7 @@ crofchan::event_conn_terminated()
 				}
 
 				// ... try to reestablish main connection
-				conns[auxid]->reconnect(true);
+				conns[auxid]->reconnect(conns_backoff_reset[auxid]);
 
 			// if main connection was passively established (accept on our side) ...
 			} else {
@@ -535,7 +545,7 @@ crofchan::event_conn_terminated()
 		} else {
 
 			if (conns[auxid]->is_actively_established()) {
-				conns[auxid]->reconnect(true);
+				conns[auxid]->reconnect(conns_backoff_reset[auxid]);
 			} else {
 				delete conns[auxid];
 				conns.erase(auxid);
@@ -564,6 +574,8 @@ crofchan::event_conn_refused()
 		if (conns.find(auxid) == conns.end())
 			continue;
 
+		conns_backoff_reset[auxid] = false;
+
 		rofl::logging::info << "[rofl-common][crofchan] "
 				<< "auxid: " << it->str() << " -conn-refused- " << str() << std::endl;
 
@@ -579,6 +591,12 @@ crofchan::event_conn_refused()
 					it->second->close();
 				}
 			}
+			conns[rofl::cauxid(0)]->reconnect(conns_backoff_reset[auxid]);
+			conns_refused.clear();
+			return;
+
+		} else {
+			conns[rofl::cauxid(0)]->reconnect(conns_backoff_reset[auxid]);
 		}
 	}
 
@@ -603,6 +621,8 @@ crofchan::event_conn_failed()
 		if (conns.find(auxid) == conns.end())
 			continue;
 
+		conns_backoff_reset[auxid] = false;
+
 		rofl::logging::info << "[rofl-common][crofchan] "
 				<< "auxid: " << it->str() << " -conn-failed- " << str() << std::endl;
 
@@ -618,6 +638,12 @@ crofchan::event_conn_failed()
 					it->second->close();
 				}
 			}
+			conns[rofl::cauxid(0)]->reconnect(conns_backoff_reset[auxid]);
+			conns_failed.clear();
+			return;
+
+		} else {
+			conns[rofl::cauxid(0)]->reconnect(conns_backoff_reset[auxid]);
 		}
 	}
 

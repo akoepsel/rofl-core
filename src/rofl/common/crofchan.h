@@ -373,6 +373,11 @@ private:
 
 	virtual void
 	recv_message(crofconn& conn, rofl::openflow::cofmsg *msg) {
+		if ((this->ofp_version == rofl::openflow::OFP_VERSION_UNKNOWN) &&
+				(conn.get_aux_id() == rofl::cauxid(0)) &&
+				(conn.get_version() == msg->get_version())) {
+			this->ofp_version = conn.get_version();
+		}
 		env->recv_message(*this, conn.get_aux_id(), msg);
 	};
 
@@ -520,6 +525,8 @@ private:
 	std::list<rofl::cauxid>				conns_refused;
 	// failed connection ids
 	std::list<rofl::cauxid>				conns_failed;
+	// reset backoff timer for connections
+	std::map<rofl::cauxid, bool>		conns_backoff_reset;
 };
 
 }; /* namespace rofl */
