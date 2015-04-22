@@ -776,6 +776,7 @@ crofconn::recv_message(
 	} break;
 	default: {
 		rofl::logging::alert << "[rofl-common][rofsock] dropping message with unsupported OpenFlow version" << std::endl;
+#if 0
 		//throw eBadRequestBadVersion();
 		size_t len = (msg->framelen() > 64) ? 64 : msg->framelen();
 		rofl::openflow::cofmsg_error_bad_request_bad_version *error = 
@@ -785,6 +786,9 @@ crofconn::recv_message(
 					msg->soframe(),
 					len);
 		send_message(error);
+#endif
+		send_message(new rofl::openflow::cofmsg_error_bad_request_bad_version(
+						get_version(), msg->get_xid(), msg->soframe(), (msg->framelen() > 64) ? 64 : msg->framelen()));
 		delete msg; return;
 	};
 	}
