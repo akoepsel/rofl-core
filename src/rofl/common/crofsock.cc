@@ -382,7 +382,6 @@ crofsock::parse_message(
 		} else {
 			rofl::logging::error << "[rofl-common][crofsock] eBadRequestBadType " << std::endl;
 		}
-
 	} catch (RoflException& e) {
 
 		if (msg) {
